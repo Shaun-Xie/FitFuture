@@ -4,10 +4,10 @@ Goal: FitFuture is a fitness tracking app where users can log workouts and other
 
 Interactions: Users can track workouts by filling in data in the workout section of the ui. they can see a list of all their workouts in the main section of the page. In the analytics tab they can see how they stack up against general population data for other people similar to them. 
 
-Video demo: Attached in canvas
-ER Diagram: Attached in canvas
+Video Demo and ER Diagram in Repo
 
-# FitFuture – Setup & Run
+
+# Setup & Run
 App where user is able to track fitness metric and is then compared against large population data.
 
 ## Requirements
