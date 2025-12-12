@@ -2,18 +2,18 @@ from flask import Flask, request, redirect, url_for, render_template_string
 import sqlite3
 from datetime import datetime, date, timedelta
 import os
+import pandas as pd
 
-import pandas as pd  # for Kaggle datasets
-
-DB_PATH = "fitfuture.db"
 app = Flask(__name__)
+DB_PATH = "fitfuture.db"
 
-# Cached external data
 EXTERNAL_STATS = {}
 DATAFRAMES = {}
 
 
-# ---------- DATABASE SETUP ----------
+# ===========================================================
+# DATABASE SETUP
+# ===========================================================
 
 def get_db():
     conn = sqlite3.connect(DB_PATH)
@@ -25,18 +25,16 @@ def init_db():
     conn = get_db()
     cur = conn.cursor()
 
-    # Basic users table
     cur.execute("""
         CREATE TABLE IF NOT EXISTS users (
-            user_id        INTEGER PRIMARY KEY AUTOINCREMENT,
-            email          TEXT NOT NULL UNIQUE,
-            password_hash  TEXT,
-            created_at     TEXT NOT NULL,
-            status         TEXT NOT NULL DEFAULT 'ACTIVE'
+            user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT NOT NULL UNIQUE,
+            password_hash TEXT,
+            created_at TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'ACTIVE'
         );
     """)
 
-    # Simple profile: age + gender (for cohort comparisons)
     cur.execute("""
         CREATE TABLE IF NOT EXISTS user_profiles (
             user_id INTEGER PRIMARY KEY,
@@ -50,239 +48,192 @@ def init_db():
         );
     """)
 
-    # Workouts (CRUD + filter)
     cur.execute("""
         CREATE TABLE IF NOT EXISTS workout_sessions (
-            workout_id             INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id                INTEGER NOT NULL,
-            workout_date           TEXT NOT NULL,   -- YYYY-MM-DD
-            start_time             TEXT,            -- HH:MM
-            end_time               TEXT,            -- HH:MM
+            workout_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            workout_date TEXT NOT NULL,
+            start_time TEXT,
+            end_time TEXT,
             total_duration_minutes INTEGER,
-            perceived_intensity    INTEGER,         -- 1..10
-            source                 TEXT,            -- manual/app/device
-            notes                  TEXT,
+            perceived_intensity INTEGER,
+            source TEXT,
+            notes TEXT,
             FOREIGN KEY (user_id) REFERENCES users(user_id)
         );
     """)
 
-    # Seed one user + profile if missing (user_id = 1)
-    cur.execute("SELECT COUNT(*) AS c FROM users;")
+    cur.execute("SELECT COUNT(*) AS c FROM users")
     if cur.fetchone()["c"] == 0:
-        cur.execute(
-            "INSERT INTO users (email, password_hash, created_at, status) "
-            "VALUES (?, ?, ?, ?);",
-            ("test@example.com", "dummyhash", datetime.utcnow().isoformat(), "ACTIVE"),
-        )
+        cur.execute("""
+            INSERT INTO users (email, password_hash, created_at, status)
+            VALUES (?, ?, ?, ?)
+        """, ("test@example.com", "hash", datetime.utcnow().isoformat(), "ACTIVE"))
 
-    cur.execute("SELECT COUNT(*) AS c FROM user_profiles WHERE user_id = 1;")
+    cur.execute("SELECT COUNT(*) AS c FROM user_profiles WHERE user_id = 1")
     if cur.fetchone()["c"] == 0:
-        cur.execute(
-            "INSERT INTO user_profiles (user_id, age, gender, height_cm, weight_kg, bmi, resting_heart_rate) "
-            "VALUES (?, ?, ?, ?, ?, ?, ?);",
-            (1, 22, "M", None, None, None, None),
-        )
+        cur.execute("""
+            INSERT INTO user_profiles (user_id, age, gender)
+            VALUES (?, ?, ?)
+        """, (1, 22, "M"))
 
     conn.commit()
     conn.close()
 
 
-# ---------- EXTERNAL CSV DATA (KAGGLE DATASETS) ----------
+# ===========================================================
+# LOAD 3 DATASETS
+# ===========================================================
 
 def compute_external_stats():
-    """
-    Load and cache small summary stats for the Kaggle datasets.
-    Also stores full DataFrames in DATAFRAMES for analytics.
-    """
     global EXTERNAL_STATS, DATAFRAMES
     if EXTERNAL_STATS:
         return EXTERNAL_STATS
 
     base = os.path.dirname(os.path.abspath(__file__))
-    stats = {}
 
     datasets = [
         ("gym_members_exercise_tracking.csv", "gym", "Gym Members Exercise Tracking"),
         ("health_fitness_tracking_365days.csv", "hf365", "Health Fitness Tracking 365 Days"),
+        ("health_fitness_dataset.csv", "health", "General Health + Wellness Dataset")
     ]
 
-    for filename, key, label in datasets:
-        path = os.path.join(base, filename)
+    stats = {}
+
+    for file, key, label in datasets:
+        path = os.path.join(base, file)
         entry = {"name": label, "exists": False}
+
         if os.path.exists(path):
             try:
                 df = pd.read_csv(path)
                 DATAFRAMES[key] = df
                 entry["exists"] = True
-                entry["num_rows"] = int(len(df))
-                entry["num_cols"] = int(len(df.columns))
+                entry["num_rows"] = len(df)
+                entry["num_cols"] = len(df.columns)
 
-                # Gym dataset: durations and calories
                 if key == "gym":
-                    if "Calories_Burned" in df.columns:
-                        entry["avg_calories_burned"] = float(df["Calories_Burned"].mean())
-                    if "Session_Duration (hours)" in df.columns:
-                        entry["avg_session_hours"] = float(df["Session_Duration (hours)"].mean())
+                    if "Session_Duration (hours)" in df:
+                        entry["avg_session_hours"] = df["Session_Duration (hours)"].mean()
 
-                # 365-day dataset: steps, sleep, exercise
                 if key == "hf365":
-                    if "steps" in df.columns:
-                        entry["avg_steps"] = float(df["steps"].mean())
-                    if "sleep_hours" in df.columns:
-                        entry["avg_sleep_hours"] = float(df["sleep_hours"].mean())
-                    if "exercise_minutes" in df.columns:
-                        entry["avg_exercise_minutes"] = float(df["exercise_minutes"].mean())
+                    if "exercise_minutes" in df:
+                        entry["avg_exercise_minutes"] = df["exercise_minutes"].mean()
+
+                if key == "health":
+                    if "resting_heart_rate" in df:
+                        entry["avg_resting_hr"] = df["resting_heart_rate"].mean()
+                    if "hours_sleep" in df:
+                        entry["avg_sleep_hours"] = df["hours_sleep"].mean()
 
             except Exception as e:
                 entry["error"] = str(e)
+
         stats[key] = entry
 
     EXTERNAL_STATS = stats
-    return EXTERNAL_STATS
+    return stats
 
 
-# ---------- USER PROFILE + ANALYTICS HELPERS ----------
+# ===========================================================
+# ANALYTICS HELPERS
+# ===========================================================
 
 def get_user_profile(user_id=1):
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("SELECT * FROM user_profiles WHERE user_id = ?;", (user_id,))
+    cur.execute("SELECT * FROM user_profiles WHERE user_id = ?", (user_id,))
     row = cur.fetchone()
     conn.close()
     return dict(row) if row else None
 
 
 def percentile_rank(series, value):
-    """Return percentile rank of value within a numeric iterable."""
-    if series is None or len(series) == 0:
+    series = [float(x) for x in series if pd.notnull(x)]
+    if not series:
         return None
-    clean = [float(x) for x in series if pd.notnull(x)]
-    if not clean:
-        return None
-    count = sum(1 for x in clean if x <= value)
-    return 100.0 * count / len(clean)
+    count = sum(1 for x in series if x <= value)
+    return 100 * count / len(series)
 
 
 def compute_fitness_summary(user_id=1):
-    """
-    Uses:
-      - recent workouts (last 30 days) from workout_sessions
-      - user profile (age, gender)
-      - Kaggle datasets in DATAFRAMES
-    """
     profile = get_user_profile(user_id)
     result = {}
 
-    # Recent workouts (last 30 days)
+    # Load last 30 days workouts
     conn = get_db()
     cur = conn.cursor()
-    today = date.today()
-    window_start = today - timedelta(days=30)
-    cur.execute(
-        """
+    window = (date.today() - timedelta(days=30)).isoformat()
+
+    cur.execute("""
         SELECT workout_date, total_duration_minutes
         FROM workout_sessions
-        WHERE user_id = ?
-          AND workout_date IS NOT NULL
-          AND workout_date >= ?
-          AND total_duration_minutes IS NOT NULL;
-        """,
-        (user_id, window_start.isoformat()),
-    )
+        WHERE user_id = ? AND workout_date >= ? AND total_duration_minutes IS NOT NULL
+    """, (user_id, window))
+
     rows = cur.fetchall()
     conn.close()
 
     if rows:
-        durations = []
-        dates = []
-        for r in rows:
-            durations.append(r["total_duration_minutes"])
-            try:
-                d = datetime.fromisoformat(r["workout_date"]).date()
-            except Exception:
-                try:
-                    d = datetime.strptime(r["workout_date"], "%Y-%m-%d").date()
-                except Exception:
-                    continue
-            dates.append(d)
+        durations = [r["total_duration_minutes"] for r in rows]
+        total = sum(durations)
+        avg = total / len(durations)
 
-        if durations:
-            total_minutes = sum(durations)
-            avg_duration = total_minutes / len(durations)
+        dates = [datetime.fromisoformat(r["workout_date"]).date() for r in rows]
+        span = max((max(dates) - min(dates)).days + 1, 1)
 
-            if dates:
-                span_days = (max(dates) - min(dates)).days + 1
-            else:
-                span_days = 1
-            span_days = max(span_days, 1)
+        weekly = total * 7 / span
+        score = min(10, weekly / 30)
+        proj = min(10, score + 1)
 
-            weekly_minutes = total_minutes * 7.0 / span_days
-
-            current_score = min(10.0, weekly_minutes / 30.0)
-            projected_score = min(10.0, current_score + 1.0)
-
-            result.update(
-                {
-                    "has_data": True,
-                    "total_minutes_30d": total_minutes,
-                    "avg_duration": avg_duration,
-                    "weekly_minutes": weekly_minutes,
-                    "current_score": current_score,
-                    "projected_score": projected_score,
-                }
-            )
-        else:
-            result["has_data"] = False
+        result.update(
+            has_data=True,
+            total_minutes_30d=total,
+            avg_duration=avg,
+            weekly_minutes=weekly,
+            current_score=score,
+            projected_score=proj,
+        )
     else:
         result["has_data"] = False
 
     compute_external_stats()
 
-    result["cohort_label"] = None
-    result["hf365_percentile"] = None
-    result["gym_percentile"] = None
-    result["age"] = profile.get("age") if profile else None
+    age = profile.get("age")
+    gender = profile.get("gender")
 
-    gender = (profile.get("gender") if profile else None) or ""
-    gender_code = gender[0].upper() if gender else None
-    result["gender_label"] = {"M": "males", "F": "females"}.get(gender_code, "users")
+    if age and gender and result.get("weekly_minutes"):
+        result["cohort_label"] = f"{age-2}–{age+2}yo {('males' if gender=='M' else 'females')}"
 
-    weekly_minutes = result.get("weekly_minutes")
-    if profile and profile.get("age") and gender_code and weekly_minutes:
-        age = profile["age"]
-        result["cohort_label"] = f"{age-2}–{age+2}yo {result['gender_label']}"
-
-        # 1) 365-day dataset: daily exercise minutes
-        df_hf = DATAFRAMES.get("hf365")
-        if df_hf is not None and "exercise_minutes" in df_hf.columns:
-            cohort = df_hf[
-                (df_hf["age"].between(age - 2, age + 2))
-                & (df_hf["gender"].astype(str).str.upper().str[0] == gender_code)
+        # HF365 comparison
+        df365 = DATAFRAMES.get("hf365")
+        if df365 is not None:
+            cohort = df365[
+                (df365["age"].between(age-2, age+2)) &
+                (df365["gender"].astype(str).str[0].str.upper() == gender)
             ]
             if not cohort.empty:
-                daily_equiv = weekly_minutes / 7.0
-                pct = percentile_rank(cohort["exercise_minutes"], daily_equiv)
-                result["hf365_percentile"] = pct
-                result["hf365_cohort_size"] = len(cohort)
+                daily_equiv = result["weekly_minutes"] / 7
+                result["hf365_percentile"] = percentile_rank(
+                    cohort["exercise_minutes"], daily_equiv
+                )
 
-        # 2) Gym members dataset: session duration
+        # Gym comparison
         df_gym = DATAFRAMES.get("gym")
-        if df_gym is not None and "Session_Duration (hours)" in df_gym.columns:
-            cohort2 = df_gym[
-                (df_gym["Age"].between(age - 2, age + 2))
-                & (df_gym["Gender"].astype(str).str.upper().str[0] == gender_code)
+        if df_gym is not None:
+            cohort = df_gym[
+                (df_gym["Age"].between(age-2, age+2)) &
+                (df_gym["Gender"].astype(str).str[0].str.upper() == gender)
             ]
-            if not cohort2.empty and result.get("avg_duration"):
-                session_minutes = cohort2["Session_Duration (hours)"] * 60.0
-                pct2 = percentile_rank(session_minutes, result["avg_duration"])
-                result["gym_percentile"] = pct2
-                result["gym_cohort_size"] = len(cohort2)
+
+            if not cohort.empty and result.get("avg_duration"):
+                mins = cohort["Session_Duration (hours)"] * 60
+                result["gym_percentile"] = percentile_rank(mins, result["avg_duration"])
 
     return result
 
 
-# ---------- HTML TEMPLATE ----------
-
+# HTML
 BASE_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="en">
@@ -1322,9 +1273,11 @@ BASE_TEMPLATE = """
 """
 
 
-# ---------- ROUTES ----------
+# ===========================================================
+# ROUTES
+# ===========================================================
 
-@app.route("/", methods=["GET"])
+@app.route("/")
 def index():
     conn = get_db()
     cur = conn.cursor()
@@ -1332,29 +1285,23 @@ def index():
     query = "SELECT * FROM workout_sessions WHERE 1=1"
     params = []
 
-    min_date = request.args.get("min_date")
-    max_date = request.args.get("max_date")
-    min_intensity = request.args.get("min_intensity")
-
-    if min_date:
+    if request.args.get("min_date"):
         query += " AND workout_date >= ?"
-        params.append(min_date)
-    if max_date:
+        params.append(request.args["min_date"])
+
+    if request.args.get("max_date"):
         query += " AND workout_date <= ?"
-        params.append(max_date)
-    if min_intensity:
-        query += " AND (perceived_intensity IS NOT NULL AND perceived_intensity >= ?)"
-        params.append(int(min_intensity))
+        params.append(request.args["max_date"])
+
+    if request.args.get("min_intensity"):
+        query += " AND perceived_intensity >= ?"
+        params.append(int(request.args["min_intensity"]))
 
     query += " ORDER BY workout_date DESC, workout_id DESC"
-
     cur.execute(query, params)
+
     workouts = cur.fetchall()
     conn.close()
-
-    external_stats = compute_external_stats()
-    profile = get_user_profile(1)
-    fitness_summary = compute_fitness_summary(1)
 
     return render_template_string(
         BASE_TEMPLATE,
@@ -1362,9 +1309,9 @@ def index():
         workouts=workouts,
         workout=None,
         form_action=url_for("create_workout"),
-        external_stats=external_stats,
-        profile=profile,
-        fitness_summary=fitness_summary,
+        external_stats=compute_external_stats(),
+        profile=get_user_profile(1),
+        fitness_summary=compute_fitness_summary(1),
         user_daily_exercise=None,
         pop_daily_exercise=None,
         user_avg_duration=None,
@@ -1374,50 +1321,46 @@ def index():
     )
 
 
-@app.route("/analytics", methods=["GET"])
+@app.route("/analytics")
 def analytics():
-    external_stats = compute_external_stats()
-    profile = get_user_profile(1)
-    fitness_summary = compute_fitness_summary(1)
+    ext = compute_external_stats()
+    prof = get_user_profile(1)
+    summ = compute_fitness_summary(1)
 
-    user_daily_exercise = None
-    user_avg_duration = None
-    current_score = None
-    projected_score = None
-    pop_daily_exercise = None
-    pop_avg_duration = None
+    daily = None
+    avgdur = None
+    cs = None
+    ps = None
+    pop_daily = None
+    pop_duration = None
 
-    if fitness_summary and fitness_summary.get("has_data"):
-        weekly_minutes = fitness_summary.get("weekly_minutes")
-        if weekly_minutes:
-            user_daily_exercise = weekly_minutes / 7.0
-        user_avg_duration = fitness_summary.get("avg_duration")
-        current_score = fitness_summary.get("current_score")
-        projected_score = fitness_summary.get("projected_score")
+    if summ.get("has_data"):
+        daily = summ["weekly_minutes"] / 7
+        avgdur = summ["avg_duration"]
+        cs = summ["current_score"]
+        ps = summ["projected_score"]
 
-    ds_hf = external_stats.get("hf365") if external_stats else None
-    if ds_hf and ds_hf.get("avg_exercise_minutes") is not None:
-        pop_daily_exercise = ds_hf["avg_exercise_minutes"]
+    if ext.get("hf365", {}).get("avg_exercise_minutes") is not None:
+        pop_daily = ext["hf365"]["avg_exercise_minutes"]
 
-    ds_gym = external_stats.get("gym") if external_stats else None
-    if ds_gym and ds_gym.get("avg_session_hours") is not None:
-        pop_avg_duration = ds_gym["avg_session_hours"] * 60.0
+    if ext.get("gym", {}).get("avg_session_hours") is not None:
+        pop_duration = ext["gym"]["avg_session_hours"] * 60
 
     return render_template_string(
         BASE_TEMPLATE,
         active_view="analytics",
         workouts=[],
         workout=None,
-        form_action=url_for("create_workout"),
-        external_stats=external_stats,
-        profile=profile,
-        fitness_summary=fitness_summary,
-        user_daily_exercise=user_daily_exercise,
-        pop_daily_exercise=pop_daily_exercise,
-        user_avg_duration=user_avg_duration,
-        pop_avg_duration=pop_avg_duration,
-        current_score=current_score,
-        projected_score=projected_score,
+        form_action="",
+        external_stats=ext,
+        profile=prof,
+        fitness_summary=summ,
+        user_daily_exercise=daily,
+        pop_daily_exercise=pop_daily,
+        user_avg_duration=avgdur,
+        pop_avg_duration=pop_duration,
+        current_score=cs,
+        projected_score=ps,
     )
 
 
@@ -1432,36 +1375,32 @@ def create_workout():
          total_duration_minutes, perceived_intensity, source, notes)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     """, (
-        request.form.get("user_id"),
-        request.form.get("workout_date"),
-        request.form.get("start_time") or None,
-        request.form.get("end_time") or None,
-        int(request.form.get("total_duration_minutes")) if request.form.get("total_duration_minutes") else None,
-        int(request.form.get("perceived_intensity")) if request.form.get("perceived_intensity") else None,
-        request.form.get("source") or None,
-        request.form.get("notes") or None,
+        request.form["user_id"],
+        request.form["workout_date"],
+        request.form.get("start_time"),
+        request.form.get("end_time"),
+        int(request.form["total_duration_minutes"]) if request.form.get("total_duration_minutes") else None,
+        int(request.form["perceived_intensity"]) if request.form.get("perceived_intensity") else None,
+        request.form.get("source"),
+        request.form.get("notes"),
     ))
 
     conn.commit()
     conn.close()
-    return redirect(url_for("index"))
+    return redirect("/")
 
 
-@app.route("/workouts/<int:workout_id>/edit", methods=["GET"])
+@app.route("/workouts/<int:workout_id>/edit")
 def edit_workout(workout_id):
     conn = get_db()
     cur = conn.cursor()
 
-    cur.execute("SELECT * FROM workout_sessions WHERE workout_id = ?;", (workout_id,))
+    cur.execute("SELECT * FROM workout_sessions WHERE workout_id = ?", (workout_id,))
     workout = cur.fetchone()
 
-    cur.execute("SELECT * FROM workout_sessions ORDER BY workout_date DESC, workout_id DESC;")
+    cur.execute("SELECT * FROM workout_sessions ORDER BY workout_date DESC")
     workouts = cur.fetchall()
     conn.close()
-
-    external_stats = compute_external_stats()
-    profile = get_user_profile(1)
-    fitness_summary = compute_fitness_summary(1)
 
     return render_template_string(
         BASE_TEMPLATE,
@@ -1469,9 +1408,9 @@ def edit_workout(workout_id):
         workouts=workouts,
         workout=workout,
         form_action=url_for("update_workout", workout_id=workout_id),
-        external_stats=external_stats,
-        profile=profile,
-        fitness_summary=fitness_summary,
+        external_stats=compute_external_stats(),
+        profile=get_user_profile(1),
+        fitness_summary=compute_fitness_summary(1),
         user_daily_exercise=None,
         pop_daily_exercise=None,
         user_avg_duration=None,
@@ -1488,63 +1427,52 @@ def update_workout(workout_id):
 
     cur.execute("""
         UPDATE workout_sessions
-        SET user_id = ?,
-            workout_date = ?,
-            start_time = ?,
-            end_time = ?,
-            total_duration_minutes = ?,
-            perceived_intensity = ?,
-            source = ?,
-            notes = ?
-        WHERE workout_id = ?
+        SET user_id=?, workout_date=?, start_time=?, end_time=?,
+            total_duration_minutes=?, perceived_intensity=?,
+            source=?, notes=?
+        WHERE workout_id=?
     """, (
-        request.form.get("user_id"),
-        request.form.get("workout_date"),
-        request.form.get("start_time") or None,
-        request.form.get("end_time") or None,
-        int(request.form.get("total_duration_minutes")) if request.form.get("total_duration_minutes") else None,
-        int(request.form.get("perceived_intensity")) if request.form.get("perceived_intensity") else None,
-        request.form.get("source") or None,
-        request.form.get("notes") or None,
+        request.form["user_id"],
+        request.form["workout_date"],
+        request.form.get("start_time"),
+        request.form.get("end_time"),
+        int(request.form["total_duration_minutes"]) if request.form.get("total_duration_minutes") else None,
+        int(request.form["perceived_intensity"]) if request.form.get("perceived_intensity") else None,
+        request.form.get("source"),
+        request.form.get("notes"),
         workout_id
     ))
 
     conn.commit()
     conn.close()
-    return redirect(url_for("index"))
+    return redirect("/")
 
 
 @app.route("/workouts/<int:workout_id>/delete", methods=["POST"])
 def delete_workout(workout_id):
     conn = get_db()
     cur = conn.cursor()
-    cur.execute("DELETE FROM workout_sessions WHERE workout_id = ?;", (workout_id,))
+    cur.execute("DELETE FROM workout_sessions WHERE workout_id=?", (workout_id,))
     conn.commit()
     conn.close()
-    return redirect(url_for("index"))
+    return redirect("/")
 
 
 @app.route("/profile", methods=["POST"])
 def update_profile():
-    age_raw = request.form.get("age")
-    gender = request.form.get("gender") or None
-
-    age_val = None
-    if age_raw:
-        try:
-            age_val = int(age_raw)
-        except ValueError:
-            age_val = None
-
     conn = get_db()
     cur = conn.cursor()
-    cur.execute(
-        "UPDATE user_profiles SET age = ?, gender = ? WHERE user_id = 1;",
-        (age_val, gender),
-    )
+
+    age = request.form.get("age")
+    gender = request.form.get("gender")
+
+    cur.execute("""
+        UPDATE user_profiles SET age=?, gender=? WHERE user_id=1
+    """, (age, gender))
+
     conn.commit()
     conn.close()
-    return redirect(url_for("index"))
+    return redirect("/")
 
 
 if __name__ == "__main__":
