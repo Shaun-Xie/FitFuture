@@ -169,12 +169,6 @@ def compute_fitness_summary(user_id=1):
       - recent workouts (last 30 days) from workout_sessions
       - user profile (age, gender)
       - Kaggle datasets in DATAFRAMES
-
-    Returns a dict with:
-      - weekly_minutes, avg_duration, current_score, projected_score
-      - hf365_percentile (daily exercise vs population)
-      - gym_percentile (session duration vs gym population)
-      - cohort_label, age, gender_label, etc.
     """
     profile = get_user_profile(user_id)
     result = {}
@@ -222,12 +216,10 @@ def compute_fitness_summary(user_id=1):
                 span_days = 1
             span_days = max(span_days, 1)
 
-            # Approximate weekly volume from last 30 days
             weekly_minutes = total_minutes * 7.0 / span_days
 
-            # Simple "fitness score": 30 min/week ~ 1 point, capped at 10
             current_score = min(10.0, weekly_minutes / 30.0)
-            projected_score = min(10.0, current_score + 1.0)  # naive future bump
+            projected_score = min(10.0, current_score + 1.0)
 
             result.update(
                 {
@@ -244,10 +236,8 @@ def compute_fitness_summary(user_id=1):
     else:
         result["has_data"] = False
 
-    # Make sure external datasets are loaded
     compute_external_stats()
 
-    # Cohort info based on age & gender
     result["cohort_label"] = None
     result["hf365_percentile"] = None
     result["gym_percentile"] = None
@@ -291,7 +281,7 @@ def compute_fitness_summary(user_id=1):
     return result
 
 
-# ---------- HTML TEMPLATE (MODERN UI + ANALYTICS) ----------
+# ---------- HTML TEMPLATE ----------
 
 BASE_TEMPLATE = """
 <!DOCTYPE html>
@@ -338,12 +328,12 @@ BASE_TEMPLATE = """
         header {
             background: radial-gradient(circle at top left, #1f2937, #020617);
             border-bottom: 1px solid rgba(148, 163, 184, 0.2);
-            padding: 20px 16px;
+            padding: 16px 16px 10px 16px;
         }
 
         .header-inner {
             max-width: 1100px;
-            margin: 0 auto;
+            margin: 0 auto 8px auto;
             display: flex;
             align-items: center;
             justify-content: space-between;
@@ -398,9 +388,36 @@ BASE_TEMPLATE = """
             background: rgba(15,23,42,0.8);
         }
 
+        .nav-tabs {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: flex;
+            gap: 8px;
+            font-size: 13px;
+        }
+
+        .nav-tab {
+            padding: 6px 12px;
+            border-radius: 999px;
+            border: 1px solid transparent;
+            color: var(--text-muted);
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .nav-tab-active {
+            border-color: rgba(148, 163, 184, 0.7);
+            background: rgba(15,23,42,0.95);
+            color: #e5e7eb;
+        }
+
+        .nav-tab:hover {
+            border-color: rgba(148, 163, 184, 0.7);
+        }
+
         main {
             flex: 1;
-            padding: 24px 12px 40px;
+            padding: 20px 12px 40px;
         }
 
         .main-inner {
@@ -611,6 +628,7 @@ BASE_TEMPLATE = """
         }
 
         .badge-intensity-low span { background: #22c55e; }
+        
         .badge-intensity-mid span { background: #eab308; }
         .badge-intensity-high span { background: #f97316; }
         .badge-intensity-max span { background: #ef4444; }
@@ -646,7 +664,6 @@ BASE_TEMPLATE = """
             color: var(--text-muted);
         }
 
-        /* External stats UI */
         .external-stats { margin-top: 18px; }
 
         .external-cards {
@@ -674,7 +691,31 @@ BASE_TEMPLATE = """
             color: var(--text-muted);
         }
 
+        .analytics-grid {
+            max-width: 1100px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr);
+            gap: 20px;
+        }
+
+        @media (max-width: 960px) {
+            .analytics-grid {
+                grid-template-columns: minmax(0, 1fr);
+            }
+        }
+
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 220px;
+            margin-top: 6px;
+        }
+
     </style>
+    {% if active_view == 'analytics' %}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    {% endif %}
 </head>
 <body>
 <div class="shell">
@@ -691,15 +732,319 @@ BASE_TEMPLATE = """
                     </div>
                 </div>
             </div>
-            <div class="header-tag">
-                Checkpoint #2 · CRUD + Filter + Kaggle integration
-            </div>
+        </div>
+        <div class="nav-tabs">
+            <a href="{{ url_for('index') }}"
+               class="nav-tab {% if active_view == 'workouts' %}nav-tab-active{% endif %}">
+                Workouts
+            </a>
+            <a href="{{ url_for('analytics') }}"
+               class="nav-tab {% if active_view == 'analytics' %}nav-tab-active{% endif %}">
+                Analytics
+            </a>
         </div>
     </header>
 
     <main>
 
-        <!-- Profile card: age + gender for cohort-based comparisons -->
+        {% if active_view == 'analytics' %}
+
+        <!-- ANALYTICS VIEW -->
+        <div class="analytics-grid">
+            <div class="card">
+                <div class="card-inner">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">You vs population</div>
+                            <div class="card-subtitle">
+                                Based on your last 30 days of training and your age/gender profile.
+                            </div>
+                        </div>
+                    </div>
+                    {% if fitness_summary and fitness_summary.has_data %}
+                        <div class="external-cards">
+                            <div class="external-card">
+                                <div class="external-card-title">Your training snapshot</div>
+                                <div class="external-card-metric">
+                                    Weekly volume: ~{{ fitness_summary.weekly_minutes|round(1) }} min/week
+                                </div>
+                                <div class="external-card-metric">
+                                    Avg session: {{ fitness_summary.avg_duration|round(1) }} min
+                                </div>
+                                {% if fitness_summary.cohort_label %}
+                                <div class="external-card-metric">
+                                    Comparison group: {{ fitness_summary.cohort_label }}
+                                </div>
+                                {% else %}
+                                <div class="external-card-metric">
+                                    Set your age & gender in the profile to enable cohort-based comparisons.
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div class="external-card">
+                                <div class="external-card-title">Percentile estimates</div>
+                                {% if fitness_summary.hf365_percentile %}
+                                  <div class="external-card-metric">
+                                      Daily exercise vs 365-day dataset:
+                                      ~{{ fitness_summary.hf365_percentile|round(0) }}th percentile
+                                  </div>
+                                {% endif %}
+                                {% if fitness_summary.gym_percentile %}
+                                  <div class="external-card-metric">
+                                      Session duration vs gym dataset:
+                                      ~{{ fitness_summary.gym_percentile|round(0) }}th percentile
+                                  </div>
+                                {% endif %}
+                                {% if not fitness_summary.hf365_percentile and not fitness_summary.gym_percentile %}
+                                  <div class="external-card-metric">
+                                      Not enough population data yet to compute percentiles.
+                                  </div>
+                                {% endif %}
+                            </div>
+                            <div class="external-card">
+                                <div class="external-card-title">Projection</div>
+                                <div class="external-card-metric">
+                                    Current fitness score: {{ fitness_summary.current_score|round(1) }}/10
+                                </div>
+                                <div class="external-card-metric">
+                                    Projected in 3 months (keep this pace):
+                                    {{ fitness_summary.projected_score|round(1) }}/10
+                                </div>
+                                <div class="external-card-metric">
+                                    This is a simple prototype projection based only on your recent volume.
+                                </div>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="card-subtitle">
+                            Log a few workouts and set your age/gender in the Workouts tab to see comparisons here.
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="card">
+                <div class="card-inner">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">Population snapshot</div>
+                            <div class="card-subtitle">
+                                Aggregates from Kaggle datasets used as baselines.
+                            </div>
+                        </div>
+                    </div>
+                    {% if external_stats %}
+                    <div class="external-cards">
+                        {% for key, ds in external_stats.items() %}
+                            {% if ds.exists %}
+                            <div class="external-card">
+                                <div class="external-card-title">{{ ds.name }}</div>
+                                <div class="external-card-metric">
+                                    {{ ds.num_rows }} rows · {{ ds.num_cols }} columns
+                                </div>
+                                {% if ds.avg_steps is defined %}
+                                    <div class="external-card-metric">
+                                        Avg steps/day: {{ ds.avg_steps|round(0) }}
+                                    </div>
+                                {% endif %}
+                                {% if ds.avg_exercise_minutes is defined %}
+                                    <div class="external-card-metric">
+                                        Avg exercise: {{ ds.avg_exercise_minutes|round(1) }} min/day
+                                    </div>
+                                {% endif %}
+                                {% if ds.avg_session_hours is defined %}
+                                    <div class="external-card-metric">
+                                        Avg gym session: {{ ds.avg_session_hours|round(2) }} hours
+                                    </div>
+                                {% endif %}
+                            </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="card-subtitle">
+                        No Kaggle CSVs detected in project folder.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <div style="max-width:1100px;margin:20px auto 0 auto;">
+            <div class="card">
+                <div class="card-inner">
+                    <div class="card-header">
+                        <div>
+                            <div class="card-title">Visual comparisons</div>
+                            <div class="card-subtitle">
+                                Simple charts comparing you vs population and your current vs projected score.
+                            </div>
+                        </div>
+                    </div>
+                    {% if fitness_summary and fitness_summary.has_data %}
+                    <div class="field-row">
+                        <div class="field">
+                            <label>Exercise volume per day</label>
+                            <div class="chart-container">
+                                <canvas id="chartDailyExercise"></canvas>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label>Session duration</label>
+                            <div class="chart-container">
+                                <canvas id="chartSessionDuration"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="field-row">
+                        <div class="field">
+                            <label>Fitness score: now vs 3 months</label>
+                            <div class="chart-container">
+                                <canvas id="chartFitnessScore"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="card-subtitle">
+                        Charts will appear once you have at least a few workouts in the last 30 days.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        {% if fitness_summary and fitness_summary.has_data %}
+        <script>
+            const userDailyExercise = {{ user_daily_exercise|default('null') }};
+            const popDailyExercise = {{ pop_daily_exercise|default('null') }};
+
+            const userAvgDuration = {{ user_avg_duration|default('null') }};
+            const popAvgDuration = {{ pop_avg_duration|default('null') }};
+
+            const currentScore = {{ current_score|default('null') }};
+            const projectedScore = {{ projected_score|default('null') }};
+
+            function createBarChart(ctx, labels, userValue, popValue, labelUser, labelPop) {
+                if (ctx === null || userValue === null || popValue === null) return;
+
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: labels,
+                        datasets: [
+                            {
+                                label: labelUser,
+                                data: [userValue],
+                                backgroundColor: 'rgba(129, 140, 248, 0.85)'
+                            },
+                            {
+                                label: labelPop,
+                                data: [popValue],
+                                backgroundColor: 'rgba(148, 163, 184, 0.85)'
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: '#e5e7eb',
+                                    font: { size: 11 }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                ticks: { color: '#9ca3af', font: { size: 11 } },
+                                grid: { display: false }
+                            },
+                            y: {
+                                ticks: { color: '#9ca3af', font: { size: 11 } },
+                                grid: { color: 'rgba(55,65,81,0.7)' }
+                            }
+                        }
+                    }
+                });
+            }
+
+            function createScoreChart(ctx, currentValue, futureValue) {
+                if (ctx === null || currentValue === null || futureValue === null) return;
+
+                new Chart(ctx, {
+                    type: 'bar',
+                    data: {
+                        labels: ['Now', '3 months'],
+                        datasets: [{
+                            label: 'Fitness score (0–10)',
+                            data: [currentValue, futureValue],
+                            backgroundColor: ['rgba(96, 165, 250, 0.9)', 'rgba(52, 211, 153, 0.9)']
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                labels: {
+                                    color: '#e5e7eb',
+                                    font: { size: 11 }
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                ticks: { color: '#9ca3af', font: { size: 11 } },
+                                grid: { display: false }
+                            },
+                            y: {
+                                suggestedMin: 0,
+                                suggestedMax: 10,
+                                ticks: { color: '#9ca3af', font: { size: 11 } },
+                                grid: { color: 'rgba(55,65,81,0.7)' }
+                            }
+                        }
+                    }
+                });
+            }
+
+            window.addEventListener('load', () => {
+                const ctxDaily = document.getElementById('chartDailyExercise')?.getContext('2d');
+                const ctxSession = document.getElementById('chartSessionDuration')?.getContext('2d');
+                const ctxScore = document.getElementById('chartFitnessScore')?.getContext('2d');
+
+                createBarChart(
+                    ctxDaily,
+                    ['Exercise (min/day)'],
+                    userDailyExercise,
+                    popDailyExercise,
+                    'You',
+                    'Population avg'
+                );
+
+                createBarChart(
+                    ctxSession,
+                    ['Session duration (min)'],
+                    userAvgDuration,
+                    popAvgDuration,
+                    'Your avg',
+                    'Population avg'
+                );
+
+                createScoreChart(
+                    ctxScore,
+                    currentScore,
+                    projectedScore
+                );
+            });
+        </script>
+        {% endif %}
+
+        {% else %}
+
+        <!-- WORKOUTS VIEW -->
+
         <div style="max-width:1100px;margin:0 auto 16px auto;">
             <div class="card">
                 <div class="card-inner">
@@ -738,14 +1083,14 @@ BASE_TEMPLATE = """
 
         <div class="main-inner">
 
-            <!-- LEFT: TABLE (READ + FILTER + EXTERNAL + ANALYTICS) -->
+            <!-- LEFT: TABLE -->
             <div class="card">
                 <div class="card-inner">
                     <div class="card-header">
                         <div>
                             <div class="card-title">Workout Sessions</div>
                             <div class="card-subtitle">
-                                Log your workouts, filter by date and intensity, and see how you stack up.
+                                Log your workouts, filter by date and intensity.
                             </div>
                         </div>
                         <div class="pill">
@@ -754,7 +1099,6 @@ BASE_TEMPLATE = """
                         </div>
                     </div>
 
-                    <!-- Filter -->
                     <form method="get" action="{{ url_for('index') }}">
                         <div class="field-row">
                             <div class="field">
@@ -780,7 +1124,6 @@ BASE_TEMPLATE = """
                         </div>
                     </form>
 
-                    <!-- Table -->
                     <div style="margin-top: 18px; overflow-x:auto;">
                         <table>
                             <thead>
@@ -877,123 +1220,10 @@ BASE_TEMPLATE = """
                             </tbody>
                         </table>
                     </div>
-
-                    <!-- External datasets snapshot (Kaggle) -->
-                    {% if external_stats %}
-                    <div class="external-stats">
-                        <div class="card-subtitle" style="margin-bottom:6px;">
-                            Population snapshot from Kaggle datasets:
-                        </div>
-                        <div class="external-cards">
-                            {% for key, ds in external_stats.items() %}
-                                {% if ds.exists %}
-                                <div class="external-card">
-                                    <div class="external-card-title">{{ ds.name }}</div>
-                                    <div class="external-card-metric">
-                                        {{ ds.num_rows }} rows · {{ ds.num_cols }} columns
-                                    </div>
-                                    {% if ds.avg_calories_burned is defined %}
-                                        <div class="external-card-metric">
-                                            Avg calories: {{ ds.avg_calories_burned|round(1) }}
-                                        </div>
-                                    {% endif %}
-                                    {% if ds.avg_session_hours is defined %}
-                                        <div class="external-card-metric">
-                                            Avg session: {{ ds.avg_session_hours|round(2) }} hours
-                                        </div>
-                                    {% endif %}
-                                    {% if ds.avg_steps is defined %}
-                                        <div class="external-card-metric">
-                                            Avg steps/day: {{ ds.avg_steps|round(0) }}
-                                        </div>
-                                    {% endif %}
-                                    {% if ds.avg_sleep_hours is defined %}
-                                        <div class="external-card-metric">
-                                            Avg sleep: {{ ds.avg_sleep_hours|round(2) }} hours
-                                        </div>
-                                    {% endif %}
-                                    {% if ds.avg_exercise_minutes is defined %}
-                                        <div class="external-card-metric">
-                                            Avg exercise: {{ ds.avg_exercise_minutes|round(1) }} min/day
-                                        </div>
-                                    {% endif %}
-                                    {% if ds.error is defined %}
-                                        <div class="external-card-metric" style="color:#fecaca;">
-                                            Error loading: {{ ds.error }}
-                                        </div>
-                                    {% endif %}
-                                </div>
-                                {% endif %}
-                            {% endfor %}
-                        </div>
-                    </div>
-                    {% endif %}
-
-                    <!-- Your training vs population + projection -->
-                    {% if fitness_summary and fitness_summary.has_data %}
-                    <div class="external-stats">
-                        <div class="card-subtitle" style="margin-bottom:6px;">
-                            Your training vs population
-                        </div>
-                        <div class="external-cards">
-                            <div class="external-card">
-                                <div class="external-card-title">Your recent training</div>
-                                <div class="external-card-metric">
-                                    ~{{ fitness_summary.weekly_minutes|round(1) }} min/week (last 30 days)
-                                </div>
-                                <div class="external-card-metric">
-                                    Avg session: {{ fitness_summary.avg_duration|round(1) }} min
-                                </div>
-                                {% if fitness_summary.cohort_label %}
-                                <div class="external-card-metric">
-                                    Comparison group: {{ fitness_summary.cohort_label }}
-                                </div>
-                                {% endif %}
-                            </div>
-                            <div class="external-card">
-                                <div class="external-card-title">Population percentiles</div>
-                                {% if fitness_summary.hf365_percentile %}
-                                  <div class="external-card-metric">
-                                      Daily exercise vs 365-day dataset:
-                                      ~{{ fitness_summary.hf365_percentile|round(0) }}th percentile
-                                  </div>
-                                {% endif %}
-                                {% if fitness_summary.gym_percentile %}
-                                  <div class="external-card-metric">
-                                      Session duration vs gym dataset:
-                                      ~{{ fitness_summary.gym_percentile|round(0) }}th percentile
-                                  </div>
-                                {% endif %}
-                                {% if not fitness_summary.hf365_percentile and not fitness_summary.gym_percentile %}
-                                  <div class="external-card-metric">
-                                      Not enough data yet to compute percentiles.
-                                  </div>
-                                {% endif %}
-                            </div>
-                            <div class="external-card">
-                                <div class="external-card-title">Simple projection</div>
-                                <div class="external-card-metric">
-                                    Current fitness score: {{ fitness_summary.current_score|round(1) }}/10
-                                </div>
-                                <div class="external-card-metric">
-                                    Projected in 3 months (if you keep this pace):
-                                    {{ fitness_summary.projected_score|round(1) }}/10
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    {% elif fitness_summary and not fitness_summary.has_data %}
-                    <div class="external-stats">
-                        <div class="card-subtitle">
-                            Log a few workouts to see your population comparison and projections.
-                        </div>
-                    </div>
-                    {% endif %}
-
                 </div>
             </div>
 
-            <!-- RIGHT: FORM (CREATE / UPDATE) -->
+            <!-- RIGHT: FORM -->
             <div class="card">
                 <div class="card-inner">
                     <div class="card-header">
@@ -1083,6 +1313,8 @@ BASE_TEMPLATE = """
             </div>
 
         </div>
+
+        {% endif %}
     </main>
 </div>
 </body>
@@ -1090,7 +1322,7 @@ BASE_TEMPLATE = """
 """
 
 
-# ---------- ROUTES (CRUD + FILTER + PROFILE) ----------
+# ---------- ROUTES ----------
 
 @app.route("/", methods=["GET"])
 def index():
@@ -1126,12 +1358,66 @@ def index():
 
     return render_template_string(
         BASE_TEMPLATE,
+        active_view="workouts",
         workouts=workouts,
         workout=None,
         form_action=url_for("create_workout"),
         external_stats=external_stats,
         profile=profile,
         fitness_summary=fitness_summary,
+        user_daily_exercise=None,
+        pop_daily_exercise=None,
+        user_avg_duration=None,
+        pop_avg_duration=None,
+        current_score=None,
+        projected_score=None,
+    )
+
+
+@app.route("/analytics", methods=["GET"])
+def analytics():
+    external_stats = compute_external_stats()
+    profile = get_user_profile(1)
+    fitness_summary = compute_fitness_summary(1)
+
+    user_daily_exercise = None
+    user_avg_duration = None
+    current_score = None
+    projected_score = None
+    pop_daily_exercise = None
+    pop_avg_duration = None
+
+    if fitness_summary and fitness_summary.get("has_data"):
+        weekly_minutes = fitness_summary.get("weekly_minutes")
+        if weekly_minutes:
+            user_daily_exercise = weekly_minutes / 7.0
+        user_avg_duration = fitness_summary.get("avg_duration")
+        current_score = fitness_summary.get("current_score")
+        projected_score = fitness_summary.get("projected_score")
+
+    ds_hf = external_stats.get("hf365") if external_stats else None
+    if ds_hf and ds_hf.get("avg_exercise_minutes") is not None:
+        pop_daily_exercise = ds_hf["avg_exercise_minutes"]
+
+    ds_gym = external_stats.get("gym") if external_stats else None
+    if ds_gym and ds_gym.get("avg_session_hours") is not None:
+        pop_avg_duration = ds_gym["avg_session_hours"] * 60.0
+
+    return render_template_string(
+        BASE_TEMPLATE,
+        active_view="analytics",
+        workouts=[],
+        workout=None,
+        form_action=url_for("create_workout"),
+        external_stats=external_stats,
+        profile=profile,
+        fitness_summary=fitness_summary,
+        user_daily_exercise=user_daily_exercise,
+        pop_daily_exercise=pop_daily_exercise,
+        user_avg_duration=user_avg_duration,
+        pop_avg_duration=pop_avg_duration,
+        current_score=current_score,
+        projected_score=projected_score,
     )
 
 
@@ -1179,12 +1465,19 @@ def edit_workout(workout_id):
 
     return render_template_string(
         BASE_TEMPLATE,
+        active_view="workouts",
         workouts=workouts,
         workout=workout,
         form_action=url_for("update_workout", workout_id=workout_id),
         external_stats=external_stats,
         profile=profile,
         fitness_summary=fitness_summary,
+        user_daily_exercise=None,
+        pop_daily_exercise=None,
+        user_avg_duration=None,
+        pop_avg_duration=None,
+        current_score=None,
+        projected_score=None,
     )
 
 
@@ -1233,7 +1526,6 @@ def delete_workout(workout_id):
 
 @app.route("/profile", methods=["POST"])
 def update_profile():
-    """Update age + gender for user_id = 1."""
     age_raw = request.form.get("age")
     gender = request.form.get("gender") or None
 
@@ -1254,8 +1546,6 @@ def update_profile():
     conn.close()
     return redirect(url_for("index"))
 
-
-# ---------- MAIN ----------
 
 if __name__ == "__main__":
     init_db()
