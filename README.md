@@ -1,35 +1,79 @@
 # FitFuture
 
-Goal: FitFuture is a fitness tracking app where users can log workouts and other basic health metrics, and the app gives them feedback on how they compare to a large population dataset and the projection of their future fitness levels.
+FitFuture is a Flask fitness tracking app where a user can log workouts, maintain a simple profile, and compare recent activity against public population datasets. The current version is intentionally lightweight, but it now has a cleaner structure that is easier to extend into a portfolio-ready project.
 
-Interactions: Users can track workouts by filling in data in the workout section of the ui. they can see a list of all their workouts in the main section of the page. In the analytics tab they can see how they stack up against general population data for other people similar to them. 
+## What the app does
 
-Video Demo and ER Diagram in Repo
+- Tracks workout sessions with date, duration, intensity, source, and notes.
+- Stores a simple user profile for age and gender based comparisons.
+- Summarizes recent training volume over the last 30 days.
+- Estimates simple percentile comparisons using Kaggle datasets.
+- Visualizes recent activity vs population averages with Chart.js.
 
+## Project structure
 
-# Setup & Run
-App where user is able to track fitness metric and is then compared against large population data.
+```text
+FitFuture/
+├── main.py
+├── templates/
+│   ├── base.html
+│   ├── workouts.html
+│   └── analytics.html
+├── static/
+│   └── styles.css
+├── requirements.txt
+├── gym_members_exercise_tracking.csv
+├── health_fitness_tracking_365days.csv
+├── health_fitness_dataset.csv
+└── README.md
+```
 
-## Requirements
-- Python 3.9+  
-- pip 
+## Main file breakdown
 
-## Install Dependencies
+`main.py` is now organized into four sections:
 
-pip install flask pandas
+1. Database helpers
+   Creates the SQLite tables, seeds a default user/profile, and provides small query helpers.
+2. Dataset helpers
+   Loads only the columns needed from the large CSVs and caches summary stats for analytics.
+3. Analytics helpers
+   Computes the 30 day workout summary, cohort comparisons, and chart data.
+4. Route handlers
+   Renders the workouts and analytics pages and handles create, update, delete, and profile actions.
 
+## Local setup
 
-# dataset citations
+```bash
+python -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python main.py
+```
+
+Then open `http://127.0.0.1:5000`.
+
+## Why this refactor matters
+
+- App logic is separated from presentation.
+- Templates and styling are now in standard Flask folders.
+- The repo is easier to navigate and easier to deploy later.
+- Large CSV files are read more efficiently by loading only the columns the app actually uses.
+
+## Good next steps
+
+- Split database logic into a dedicated module and add migrations.
+- Add form validation and basic error handling.
+- Introduce tests for analytics helpers and route behavior.
+- Add environment based config and a production WSGI server for deployment.
+- Replace the single hardcoded user flow with authentication.
+
+## Dataset citations
+
 This project uses publicly available datasets from Kaggle:
 
-1. **Gym Members Exercise Tracking Dataset**  
-   Source: Kaggle  
-   URL: https://www.kaggle.com/datasets/valakhorasani/gym-members-exercise-dataset
-
-2. **Health & Fitness Tracking (365 Days) Dataset**  
-   Source: Kaggle  
-   URL: https://www.kaggle.com/datasets/waqasishtiaq/fitness
-
-3. **General Health & Wellness Dataset**  
-   Source: Kaggle  
-   URL: https://www.kaggle.com/datasets/evan65549/health-and-fitness-dataset
+1. Gym Members Exercise Tracking Dataset
+   https://www.kaggle.com/datasets/valakhorasani/gym-members-exercise-dataset
+2. Health & Fitness Tracking (365 Days) Dataset
+   https://www.kaggle.com/datasets/waqasishtiaq/fitness
+3. General Health & Wellness Dataset
+   https://www.kaggle.com/datasets/evan65549/health-and-fitness-dataset

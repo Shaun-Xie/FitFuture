@@ -1,0 +1,303 @@
+{% extends "base.html" %}
+
+{% block head_extras %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+{% endblock %}
+
+{% block content %}
+<div class="analytics-grid">
+    <div class="card">
+        <div class="card-inner">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">You vs population</div>
+                    <div class="card-subtitle">
+                        Based on your last 30 days of training and your age and gender profile.
+                    </div>
+                </div>
+            </div>
+            {% if fitness_summary and fitness_summary.has_data %}
+                <div class="external-cards">
+                    <div class="external-card">
+                        <div class="external-card-title">Your training snapshot</div>
+                        <div class="external-card-metric">
+                            Weekly volume: ~{{ fitness_summary.weekly_minutes|round(1) }} min/week
+                        </div>
+                        <div class="external-card-metric">
+                            Avg session: {{ fitness_summary.avg_duration|round(1) }} min
+                        </div>
+                        {% if fitness_summary.cohort_label %}
+                        <div class="external-card-metric">
+                            Comparison group: {{ fitness_summary.cohort_label }}
+                        </div>
+                        {% else %}
+                        <div class="external-card-metric">
+                            Set your age and gender in the Workouts tab to enable cohort-based comparisons.
+                        </div>
+                        {% endif %}
+                    </div>
+                    <div class="external-card">
+                        <div class="external-card-title">Percentile estimates</div>
+                        {% if fitness_summary.hf365_percentile %}
+                          <div class="external-card-metric">
+                              Daily exercise vs 365-day dataset:
+                              ~{{ fitness_summary.hf365_percentile|round(0) }}th percentile
+                          </div>
+                        {% endif %}
+                        {% if fitness_summary.gym_percentile %}
+                          <div class="external-card-metric">
+                              Session duration vs gym dataset:
+                              ~{{ fitness_summary.gym_percentile|round(0) }}th percentile
+                          </div>
+                        {% endif %}
+                        {% if not fitness_summary.hf365_percentile and not fitness_summary.gym_percentile %}
+                          <div class="external-card-metric">
+                              Not enough population data yet to compute percentiles.
+                          </div>
+                        {% endif %}
+                    </div>
+                    <div class="external-card">
+                        <div class="external-card-title">Projection</div>
+                        <div class="external-card-metric">
+                            Current fitness score: {{ fitness_summary.current_score|round(1) }}/10
+                        </div>
+                        <div class="external-card-metric">
+                            Projected in 3 months (keep this pace):
+                            {{ fitness_summary.projected_score|round(1) }}/10
+                        </div>
+                        <div class="external-card-metric">
+                            This is a simple prototype projection based only on recent workout volume.
+                        </div>
+                    </div>
+                </div>
+            {% else %}
+                <div class="card-subtitle">
+                    Log a few workouts and set your age and gender in the Workouts tab to see comparisons here.
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-inner">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">Population snapshot</div>
+                    <div class="card-subtitle">
+                        Aggregates from Kaggle datasets used as baselines.
+                    </div>
+                </div>
+            </div>
+            {% if external_stats %}
+            <div class="external-cards">
+                {% for key, ds in external_stats.items() %}
+                    {% if ds.exists %}
+                    <div class="external-card">
+                        <div class="external-card-title">{{ ds.name }}</div>
+                        <div class="external-card-metric">
+                            {{ ds.num_rows }} rows · {{ ds.num_cols }} columns
+                        </div>
+                        {% if ds.avg_steps is defined %}
+                            <div class="external-card-metric">
+                                Avg steps/day: {{ ds.avg_steps|round(0) }}
+                            </div>
+                        {% endif %}
+                        {% if ds.avg_exercise_minutes is defined %}
+                            <div class="external-card-metric">
+                                Avg exercise: {{ ds.avg_exercise_minutes|round(1) }} min/day
+                            </div>
+                        {% endif %}
+                        {% if ds.avg_session_hours is defined %}
+                            <div class="external-card-metric">
+                                Avg gym session: {{ ds.avg_session_hours|round(2) }} hours
+                            </div>
+                        {% endif %}
+                        {% if ds.avg_sleep_hours is defined %}
+                            <div class="external-card-metric">
+                                Avg sleep: {{ ds.avg_sleep_hours|round(1) }} hours
+                            </div>
+                        {% endif %}
+                        {% if ds.avg_resting_hr is defined %}
+                            <div class="external-card-metric">
+                                Avg resting HR: {{ ds.avg_resting_hr|round(1) }} bpm
+                            </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="card-subtitle">
+                No Kaggle CSVs detected in the project folder.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="chart-section">
+    <div class="card">
+        <div class="card-inner">
+            <div class="card-header">
+                <div>
+                    <div class="card-title">Visual comparisons</div>
+                    <div class="card-subtitle">
+                        Simple charts comparing you vs population and your current vs projected score.
+                    </div>
+                </div>
+            </div>
+            {% if fitness_summary and fitness_summary.has_data %}
+            <div class="field-row">
+                <div class="field">
+                    <label>Exercise volume per day</label>
+                    <div class="chart-container">
+                        <canvas id="chartDailyExercise"></canvas>
+                    </div>
+                </div>
+                <div class="field">
+                    <label>Session duration</label>
+                    <div class="chart-container">
+                        <canvas id="chartSessionDuration"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="field-row">
+                <div class="field">
+                    <label>Fitness score: now vs 3 months</label>
+                    <div class="chart-container">
+                        <canvas id="chartFitnessScore"></canvas>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="card-subtitle">
+                Charts will appear once you have at least a few workouts in the last 30 days.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if fitness_summary and fitness_summary.has_data %}
+<script>
+    const chartData = {{ chart_data|tojson }};
+
+    function createBarChart(ctx, labels, userValue, popValue, labelUser, labelPop) {
+        if (ctx === null || userValue === null || popValue === null) return;
+
+        new Chart(ctx, {
+            type: "bar",
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        label: labelUser,
+                        data: [userValue],
+                        backgroundColor: "rgba(129, 140, 248, 0.85)"
+                    },
+                    {
+                        label: labelPop,
+                        data: [popValue],
+                        backgroundColor: "rgba(148, 163, 184, 0.85)"
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: "#e5e7eb",
+                            font: { size: 11 }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: "#9ca3af", font: { size: 11 } },
+                        grid: { display: false }
+                    },
+                    y: {
+                        ticks: { color: "#9ca3af", font: { size: 11 } },
+                        grid: { color: "rgba(55,65,81,0.7)" }
+                    }
+                }
+            }
+        });
+    }
+
+    function createScoreChart(ctx, currentValue, futureValue) {
+        if (ctx === null || currentValue === null || futureValue === null) return;
+
+        new Chart(ctx, {
+            type: "bar",
+            data: {
+                labels: ["Now", "3 months"],
+                datasets: [{
+                    label: "Fitness score (0-10)",
+                    data: [currentValue, futureValue],
+                    backgroundColor: ["rgba(96, 165, 250, 0.9)", "rgba(52, 211, 153, 0.9)"]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: "#e5e7eb",
+                            font: { size: 11 }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        ticks: { color: "#9ca3af", font: { size: 11 } },
+                        grid: { display: false }
+                    },
+                    y: {
+                        suggestedMin: 0,
+                        suggestedMax: 10,
+                        ticks: { color: "#9ca3af", font: { size: 11 } },
+                        grid: { color: "rgba(55,65,81,0.7)" }
+                    }
+                }
+            }
+        });
+    }
+
+    window.addEventListener("load", () => {
+        const ctxDaily = document.getElementById("chartDailyExercise")?.getContext("2d");
+        const ctxSession = document.getElementById("chartSessionDuration")?.getContext("2d");
+        const ctxScore = document.getElementById("chartFitnessScore")?.getContext("2d");
+
+        createBarChart(
+            ctxDaily,
+            ["Exercise (min/day)"],
+            chartData.user_daily_exercise,
+            chartData.pop_daily_exercise,
+            "You",
+            "Population avg"
+        );
+
+        createBarChart(
+            ctxSession,
+            ["Session duration (min)"],
+            chartData.user_avg_duration,
+            chartData.pop_avg_duration,
+            "Your avg",
+            "Population avg"
+        );
+
+        createScoreChart(
+            ctxScore,
+            chartData.current_score,
+            chartData.projected_score
+        );
+    });
+</script>
+{% endif %}
+{% endblock %}

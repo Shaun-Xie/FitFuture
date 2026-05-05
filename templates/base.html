@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>FitFuture Tracker</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    {% block head_extras %}{% endblock %}
+</head>
+<body>
+<div class="shell">
+    <header>
+        <div class="header-inner">
+            <div class="brand">
+                <div class="brand-logo">
+                    <div class="brand-logo-inner">FF</div>
+                </div>
+                <div class="brand-text">
+                    <div class="brand-title">FitFuture Tracker</div>
+                    <div class="brand-subtitle">
+                        Workout log &middot; Population comparisons &middot; Simple projections
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="nav-tabs">
+            <a
+                href="{{ url_for('index') }}"
+                class="nav-tab {% if active_view == 'workouts' %}nav-tab-active{% endif %}"
+            >
+                Workouts
+            </a>
+            <a
+                href="{{ url_for('analytics') }}"
+                class="nav-tab {% if active_view == 'analytics' %}nav-tab-active{% endif %}"
+            >
+                Analytics
+            </a>
+        </div>
+    </header>
+
+    <main>
+        {% block content %}{% endblock %}
+    </main>
+</div>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>
