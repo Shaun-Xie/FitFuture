@@ -81,12 +81,28 @@ Then open:
 http://127.0.0.1:5000
 ```
 
+Demo login:
+
+```text
+Email: test@example.com
+Password: fitfuture123
+```
+
+## Running tests
+
+```bash
+pytest
+```
+
+The test suite uses isolated temporary SQLite databases, so route and analytics tests do not mutate the local demo database.
+
 ## Portfolio highlights
 
 - Demonstrates full-stack Flask development without hiding the backend behind a framework generator.
 - Includes session authentication and user-scoped CRUD behavior.
 - Shows practical data work with multiple large CSV datasets and cached pandas summaries.
 - Uses custom analytics logic instead of static placeholder charts.
+- Includes pytest coverage for auth, protected routes, workout ownership, and analytics helpers.
 - Includes a cohesive product direction: training intelligence, cohort benchmarking, and next-step guidance.
 - Keeps the first version simple enough to understand while leaving clear room for production-grade iteration.
 
@@ -95,7 +111,6 @@ http://127.0.0.1:5000
 - Split the app into Flask Blueprints, service modules, and database modules.
 - Add SQLAlchemy or migration-backed persistence.
 - Add form validation and user-facing error states.
-- Add tests for analytics helpers, CRUD routes, and profile updates.
 - Add goal setting, personal records, streak history, and recovery tracking.
 - Deploy the app with production config and a public demo URL.
 
