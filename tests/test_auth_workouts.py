@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-import main
 from conftest import login, register
+from fitfuture import db
 
 
 def test_protected_routes_redirect_to_login(client):
@@ -28,10 +28,10 @@ def test_registration_creates_profile_and_session(client):
     assert response.status_code == 302
     assert response.headers["Location"] == "/"
 
-    user = main.fetch_one("SELECT * FROM users WHERE email = ?", ("new@example.com",))
+    user = db.fetch_one("SELECT * FROM users WHERE email = ?", ("new@example.com",))
     assert user is not None
 
-    profile = main.fetch_one(
+    profile = db.fetch_one(
         "SELECT * FROM user_profiles WHERE user_id = ?",
         (user["user_id"],),
     )
@@ -43,7 +43,7 @@ def test_registration_creates_profile_and_session(client):
 
 def test_workout_creation_uses_logged_in_user_not_form_user_id(client):
     register(client, "owner@example.com", "password123")
-    owner = main.fetch_one("SELECT * FROM users WHERE email = ?", ("owner@example.com",))
+    owner = db.fetch_one("SELECT * FROM users WHERE email = ?", ("owner@example.com",))
 
     response = client.post(
         "/workouts",
@@ -62,14 +62,14 @@ def test_workout_creation_uses_logged_in_user_not_form_user_id(client):
 
     assert response.status_code == 302
 
-    workout = main.fetch_one("SELECT * FROM workout_sessions WHERE notes = ?", ("Ownership test",))
+    workout = db.fetch_one("SELECT * FROM workout_sessions WHERE notes = ?", ("Ownership test",))
     assert workout is not None
     assert workout["user_id"] == owner["user_id"]
 
 
 def test_users_cannot_edit_or_delete_each_others_workouts(client):
     register(client, "owner@example.com", "password123")
-    owner = main.fetch_one("SELECT * FROM users WHERE email = ?", ("owner@example.com",))
+    owner = db.fetch_one("SELECT * FROM users WHERE email = ?", ("owner@example.com",))
 
     client.post(
         "/workouts",
@@ -81,7 +81,7 @@ def test_users_cannot_edit_or_delete_each_others_workouts(client):
             "notes": "Private session",
         },
     )
-    workout = main.fetch_one(
+    workout = db.fetch_one(
         "SELECT * FROM workout_sessions WHERE user_id = ?",
         (owner["user_id"],),
     )
@@ -98,7 +98,7 @@ def test_users_cannot_edit_or_delete_each_others_workouts(client):
     )
     assert delete_response.status_code == 302
 
-    still_exists = main.fetch_one(
+    still_exists = db.fetch_one(
         "SELECT * FROM workout_sessions WHERE workout_id = ?",
         (workout["workout_id"],),
     )

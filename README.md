@@ -8,7 +8,7 @@ Most simple workout trackers show what happened. FitFuture is designed to answer
 
 > Am I training consistently enough, and how does my recent activity compare to similar people?
 
-The app currently focuses on one demo user, but the architecture is ready to evolve toward authentication, multiple users, richer goals, and production deployment.
+The app includes a demo user for quick exploration, while registration allows new users to create their own private workout history.
 
 ## Current features
 
@@ -37,13 +37,29 @@ The app currently focuses on one demo user, but the architecture is ready to evo
 
 ```text
 FitFuture/
+├── fitfuture/
+│   ├── __init__.py
+│   ├── analytics.py
+│   ├── analytics_routes.py
+│   ├── auth.py
+│   ├── config.py
+│   ├── datasets.py
+│   ├── db.py
+│   ├── users.py
+│   ├── utils.py
+│   └── workouts.py
 ├── main.py
 ├── templates/
+│   ├── auth.html
 │   ├── base.html
 │   ├── workouts.html
 │   └── analytics.html
 ├── static/
 │   └── styles.css
+├── tests/
+│   ├── conftest.py
+│   ├── test_analytics.py
+│   └── test_auth_workouts.py
 ├── requirements.txt
 ├── gym_members_exercise_tracking.csv
 ├── health_fitness_tracking_365days.csv
@@ -51,20 +67,26 @@ FitFuture/
 └── README.md
 ```
 
-## Main file breakdown
+## Architecture
 
-`main.py` is organized into focused sections:
+`main.py` is now a thin entrypoint that creates the Flask app. The application code lives in the `fitfuture/` package:
 
-1. Database helpers
-   Creates the SQLite tables, seeds a default user/profile, and provides reusable query helpers.
-2. Dataset helpers
+1. `__init__.py`
+   Creates the Flask app, registers Blueprints, wires template/static folders, and initializes SQLite.
+2. `auth.py`
+   Handles login, registration, logout, session helpers, and route protection.
+3. `workouts.py`
+   Owns workout CRUD routes, filtering, dashboard metrics, and profile update behavior.
+4. `analytics.py`
+   Computes 30-day summaries, cohort percentiles, 8-week trends, intensity zones, and recommendations.
+5. `analytics_routes.py`
+   Renders the analytics dashboard using the analytics service layer.
+6. `datasets.py`
    Loads only the needed CSV columns and caches population summary stats.
-3. Analytics helpers
-   Computes recent training volume, cohort percentiles, 8-week trends, intensity zones, consistency, and recommendations.
-4. Workout helpers
-   Handles filters, workout form parsing, metrics, and CRUD data access.
-5. Route handlers
-   Renders the workouts and analytics views and processes profile/workout actions.
+7. `db.py`
+   Creates SQLite tables, seeds the demo account, and exposes small query helpers.
+8. `config.py`, `users.py`, and `utils.py`
+   Keep constants, profile lookup, parsing, and date utilities separated from route code.
 
 ## Local setup
 
@@ -99,6 +121,7 @@ The test suite uses isolated temporary SQLite databases, so route and analytics 
 ## Portfolio highlights
 
 - Demonstrates full-stack Flask development without hiding the backend behind a framework generator.
+- Uses an app factory, Flask Blueprints, and separated service/data modules.
 - Includes session authentication and user-scoped CRUD behavior.
 - Shows practical data work with multiple large CSV datasets and cached pandas summaries.
 - Uses custom analytics logic instead of static placeholder charts.
@@ -108,7 +131,6 @@ The test suite uses isolated temporary SQLite databases, so route and analytics 
 
 ## Roadmap
 
-- Split the app into Flask Blueprints, service modules, and database modules.
 - Add SQLAlchemy or migration-backed persistence.
 - Add form validation and user-facing error states.
 - Add goal setting, personal records, streak history, and recovery tracking.

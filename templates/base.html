@@ -26,7 +26,7 @@
                         <span class="status-dot"></span>
                         {{ current_user.email }}
                     </span>
-                    <a class="btn btn-ghost btn-compact" href="{{ url_for('logout') }}">Logout</a>
+                    <a class="btn btn-ghost btn-compact" href="{{ url_for('auth.logout') }}">Logout</a>
                 {% else %}
                     <span class="status-pill">
                         <span class="status-dot"></span>
@@ -38,14 +38,14 @@
         <div class="nav-tabs">
             {% if current_user %}
                 <a
-                    href="{{ url_for('index') }}"
+                    href="{{ url_for('workouts.index') }}"
                     class="nav-tab {% if active_view == 'workouts' %}nav-tab-active{% endif %}"
                 >
                     <span class="nav-icon">01</span>
                     Workouts
                 </a>
                 <a
-                    href="{{ url_for('analytics') }}"
+                    href="{{ url_for('analytics.dashboard') }}"
                     class="nav-tab {% if active_view == 'analytics' %}nav-tab-active{% endif %}"
                 >
                     <span class="nav-icon">02</span>
@@ -53,14 +53,14 @@
                 </a>
             {% else %}
                 <a
-                    href="{{ url_for('login') }}"
+                    href="{{ url_for('auth.login') }}"
                     class="nav-tab {% if active_view == 'auth' and mode == 'login' %}nav-tab-active{% endif %}"
                 >
                     <span class="nav-icon">01</span>
                     Login
                 </a>
                 <a
-                    href="{{ url_for('register') }}"
+                    href="{{ url_for('auth.register') }}"
                     class="nav-tab {% if active_view == 'auth' and mode == 'register' %}nav-tab-active{% endif %}"
                 >
                     <span class="nav-icon">02</span>

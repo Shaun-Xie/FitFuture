@@ -92,7 +92,7 @@
             </span>
         </div>
 
-        <form method="get" action="{{ url_for('index') }}" class="toolbar-form">
+        <form method="get" action="{{ url_for('workouts.index') }}" class="toolbar-form">
             <div class="field-row filters-row">
                 <div class="field">
                     <label for="min_date">From</label>
@@ -115,7 +115,7 @@
                 </div>
                 <div class="toolbar-actions">
                     <button type="submit" class="btn btn-primary">Apply</button>
-                    <a class="btn btn-ghost" href="{{ url_for('index') }}">Clear</a>
+                    <a class="btn btn-ghost" href="{{ url_for('workouts.index') }}">Clear</a>
                 </div>
             </div>
         </form>
@@ -200,13 +200,13 @@
                             <div class="actions-cell">
                                 <a
                                     class="btn btn-ghost btn-compact"
-                                    href="{{ url_for('edit_workout', workout_id=w.workout_id) }}"
+                                    href="{{ url_for('workouts.edit_workout', workout_id=w.workout_id) }}"
                                 >
                                     Edit
                                 </a>
                                 <form
                                     method="post"
-                                    action="{{ url_for('delete_workout', workout_id=w.workout_id) }}"
+                                    action="{{ url_for('workouts.delete_workout', workout_id=w.workout_id) }}"
                                     onsubmit="return confirm('Delete this workout?');"
                                 >
                                     <button type="submit" class="btn btn-danger btn-compact">
@@ -237,7 +237,7 @@
                     <h2>Comparison Cohort</h2>
                 </div>
             </div>
-            <form method="post" action="{{ url_for('update_profile') }}">
+            <form method="post" action="{{ url_for('workouts.update_profile') }}">
                 <div class="field-row">
                     <div class="field">
                         <label for="age">Age</label>
@@ -365,7 +365,7 @@
                         {{ 'Update Workout' if workout else 'Create Workout' }}
                     </button>
                     {% if workout %}
-                        <a href="{{ url_for('index') }}" class="btn btn-ghost">Cancel</a>
+                        <a href="{{ url_for('workouts.index') }}" class="btn btn-ghost">Cancel</a>
                     {% endif %}
                 </div>
             </form>

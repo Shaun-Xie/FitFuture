@@ -73,9 +73,9 @@
                     {{ 'Log In' if mode == 'login' else 'Create Account' }}
                 </button>
                 {% if mode == 'login' %}
-                    <a class="btn btn-ghost" href="{{ url_for('register') }}">Register</a>
+                    <a class="btn btn-ghost" href="{{ url_for('auth.register') }}">Register</a>
                 {% else %}
-                    <a class="btn btn-ghost" href="{{ url_for('login') }}">Log In</a>
+                    <a class="btn btn-ghost" href="{{ url_for('auth.login') }}">Log In</a>
                 {% endif %}
             </div>
         </form>
