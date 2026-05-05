@@ -14,6 +14,8 @@ BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "fitfuture.db"
 DEFAULT_USER_ID = 1
 ANALYTICS_WINDOW_DAYS = 30
+TREND_WINDOW_WEEKS = 8
+WEEKLY_VOLUME_TARGET_MINUTES = 150
 
 DATASET_CONFIG = (
     {
@@ -244,6 +246,34 @@ def percentile_rank(series: pd.Series, value: float) -> float | None:
     return 100 * count / len(cleaned_values)
 
 
+def parse_workout_date(value: str) -> date | None:
+    try:
+        return datetime.fromisoformat(value).date()
+    except (TypeError, ValueError):
+        return None
+
+
+def get_week_start(day: date) -> date:
+    return day - timedelta(days=day.weekday())
+
+
+def fetch_recent_user_workouts(
+    user_id: int = DEFAULT_USER_ID,
+    window_days: int = 90,
+) -> list[dict[str, Any]]:
+    window_start = (date.today() - timedelta(days=window_days)).isoformat()
+
+    return fetch_all(
+        """
+        SELECT workout_date, total_duration_minutes, perceived_intensity
+        FROM workout_sessions
+        WHERE user_id = ? AND workout_date >= ?
+        ORDER BY workout_date ASC, workout_id ASC
+        """,
+        (user_id, window_start),
+    )
+
+
 def compute_fitness_summary(user_id: int = DEFAULT_USER_ID) -> dict[str, Any]:
     profile = get_user_profile(user_id) or {}
     result: dict[str, Any] = {"has_data": False}
@@ -251,7 +281,7 @@ def compute_fitness_summary(user_id: int = DEFAULT_USER_ID) -> dict[str, Any]:
     window_start = (date.today() - timedelta(days=ANALYTICS_WINDOW_DAYS)).isoformat()
     rows = fetch_all(
         """
-        SELECT workout_date, total_duration_minutes
+        SELECT workout_date, total_duration_minutes, perceived_intensity
         FROM workout_sessions
         WHERE user_id = ? AND workout_date >= ? AND total_duration_minutes IS NOT NULL
         """,
@@ -260,11 +290,24 @@ def compute_fitness_summary(user_id: int = DEFAULT_USER_ID) -> dict[str, Any]:
 
     if rows:
         durations = [row["total_duration_minutes"] for row in rows]
+        intensities = [
+            row["perceived_intensity"]
+            for row in rows
+            if row.get("perceived_intensity") is not None
+        ]
         total_minutes = sum(durations)
         average_duration = total_minutes / len(durations)
 
-        workout_dates = [datetime.fromisoformat(row["workout_date"]).date() for row in rows]
-        tracked_span_days = max((max(workout_dates) - min(workout_dates)).days + 1, 1)
+        workout_dates = [
+            workout_date
+            for row in rows
+            if (workout_date := parse_workout_date(row["workout_date"])) is not None
+        ]
+        tracked_span_days = (
+            max((max(workout_dates) - min(workout_dates)).days + 1, 1)
+            if workout_dates
+            else ANALYTICS_WINDOW_DAYS
+        )
 
         weekly_minutes = total_minutes * 7 / tracked_span_days
         current_score = min(10, weekly_minutes / 30)
@@ -272,8 +315,10 @@ def compute_fitness_summary(user_id: int = DEFAULT_USER_ID) -> dict[str, Any]:
 
         result.update(
             has_data=True,
+            session_count_30d=len(rows),
             total_minutes_30d=total_minutes,
             avg_duration=average_duration,
+            avg_intensity=sum(intensities) / len(intensities) if intensities else None,
             weekly_minutes=weekly_minutes,
             current_score=current_score,
             projected_score=projected_score,
@@ -317,17 +362,205 @@ def compute_fitness_summary(user_id: int = DEFAULT_USER_ID) -> dict[str, Any]:
     return result
 
 
+def build_training_recommendations(
+    fitness_summary: dict[str, Any],
+    training_insights: dict[str, Any],
+) -> list[dict[str, str]]:
+    if not fitness_summary.get("has_data"):
+        return [
+            {
+                "label": "Foundation",
+                "title": "Log three workouts this week",
+                "body": "A few recent sessions are enough to unlock trend, intensity, and cohort analysis.",
+            },
+            {
+                "label": "Data Quality",
+                "title": "Add duration and effort every time",
+                "body": "Those two fields power the score, projections, and training-zone breakdown.",
+            },
+        ]
+
+    recommendations: list[dict[str, str]] = []
+    weekly_minutes = float(fitness_summary.get("weekly_minutes") or 0)
+    avg_intensity = fitness_summary.get("avg_intensity")
+    consistency_rate = float(training_insights.get("consistency_rate") or 0)
+    active_week_streak = int(training_insights.get("active_week_streak") or 0)
+
+    if weekly_minutes < 90:
+        recommendations.append(
+            {
+                "label": "Volume",
+                "title": "Build toward a stronger weekly base",
+                "body": "Aim for two or three 35-minute sessions before adding more intensity.",
+            }
+        )
+    elif weekly_minutes < WEEKLY_VOLUME_TARGET_MINUTES:
+        remaining = round(WEEKLY_VOLUME_TARGET_MINUTES - weekly_minutes)
+        recommendations.append(
+            {
+                "label": "Volume",
+                "title": f"Close a {remaining}-minute weekly gap",
+                "body": "One short conditioning session can move you closer to the 150-minute benchmark.",
+            }
+        )
+    else:
+        recommendations.append(
+            {
+                "label": "Volume",
+                "title": "Maintain your current training load",
+                "body": "Your recent volume is above the baseline target. Keep progression gradual.",
+            }
+        )
+
+    if avg_intensity is not None and avg_intensity >= 8:
+        recommendations.append(
+            {
+                "label": "Recovery",
+                "title": "Add a lower-intensity recovery slot",
+                "body": "Your average effort is high, so one easier day can help sustain the block.",
+            }
+        )
+    elif avg_intensity is not None and avg_intensity <= 4:
+        recommendations.append(
+            {
+                "label": "Stimulus",
+                "title": "Add one focused hard session",
+                "body": "Your effort profile is light. A controlled higher-effort workout adds stimulus.",
+            }
+        )
+
+    if consistency_rate < 50:
+        recommendations.append(
+            {
+                "label": "Consistency",
+                "title": "Anchor workouts to repeatable days",
+                "body": "Pick two fixed days this week so the trend line has a steadier floor.",
+            }
+        )
+    elif active_week_streak >= 3:
+        recommendations.append(
+            {
+                "label": "Consistency",
+                "title": f"Protect your {active_week_streak}-week streak",
+                "body": "Schedule the next session early in the week to keep momentum intact.",
+            }
+        )
+
+    return recommendations[:3]
+
+
+def build_training_insights(user_id: int = DEFAULT_USER_ID) -> dict[str, Any]:
+    rows = fetch_recent_user_workouts(
+        user_id,
+        window_days=TREND_WINDOW_WEEKS * 7,
+    )
+    today = date.today()
+    first_week_start = get_week_start(today) - timedelta(weeks=TREND_WINDOW_WEEKS - 1)
+    week_starts = [
+        first_week_start + timedelta(weeks=index)
+        for index in range(TREND_WINDOW_WEEKS)
+    ]
+    weekly_buckets: dict[date, dict[str, Any]] = {
+        week_start: {
+            "label": f"{week_start.month}/{week_start.day}",
+            "minutes": 0,
+            "sessions": 0,
+            "intensity_total": 0,
+            "intensity_count": 0,
+        }
+        for week_start in week_starts
+    }
+    intensity_zones = {
+        "Recovery": 0,
+        "Base": 0,
+        "Hard": 0,
+        "Peak": 0,
+    }
+    workout_days: set[date] = set()
+
+    for row in rows:
+        workout_day = parse_workout_date(row["workout_date"])
+        if workout_day is None:
+            continue
+
+        workout_days.add(workout_day)
+        week_start = get_week_start(workout_day)
+        if week_start in weekly_buckets:
+            weekly_buckets[week_start]["sessions"] += 1
+            weekly_buckets[week_start]["minutes"] += row.get("total_duration_minutes") or 0
+
+            if row.get("perceived_intensity") is not None:
+                weekly_buckets[week_start]["intensity_total"] += row["perceived_intensity"]
+                weekly_buckets[week_start]["intensity_count"] += 1
+
+        intensity = row.get("perceived_intensity")
+        if intensity is None:
+            continue
+        if intensity <= 3:
+            intensity_zones["Recovery"] += 1
+        elif intensity <= 6:
+            intensity_zones["Base"] += 1
+        elif intensity <= 8:
+            intensity_zones["Hard"] += 1
+        else:
+            intensity_zones["Peak"] += 1
+
+    weeks = list(weekly_buckets.values())
+    active_weeks = {
+        week_start
+        for week_start, bucket in weekly_buckets.items()
+        if bucket["sessions"] > 0
+    }
+    active_week_streak = 0
+    probe_week = get_week_start(today)
+    while probe_week in active_weeks:
+        active_week_streak += 1
+        probe_week -= timedelta(weeks=1)
+
+    best_week = max(weeks, key=lambda bucket: bucket["minutes"]) if weeks else None
+    consistency_rate = 100 * len(active_weeks) / TREND_WINDOW_WEEKS
+
+    return {
+        "weekly_labels": [bucket["label"] for bucket in weeks],
+        "weekly_minutes": [bucket["minutes"] for bucket in weeks],
+        "weekly_sessions": [bucket["sessions"] for bucket in weeks],
+        "weekly_avg_intensity": [
+            (
+                bucket["intensity_total"] / bucket["intensity_count"]
+                if bucket["intensity_count"]
+                else None
+            )
+            for bucket in weeks
+        ],
+        "intensity_labels": list(intensity_zones.keys()),
+        "intensity_counts": list(intensity_zones.values()),
+        "active_week_streak": active_week_streak,
+        "consistency_rate": consistency_rate,
+        "active_days": len(workout_days),
+        "best_week_minutes": best_week["minutes"] if best_week else 0,
+        "best_week_label": best_week["label"] if best_week else None,
+        "target_weekly_minutes": WEEKLY_VOLUME_TARGET_MINUTES,
+    }
+
+
 def build_chart_data(
     external_stats: dict[str, dict[str, Any]],
     fitness_summary: dict[str, Any],
-) -> dict[str, float | None]:
-    chart_data: dict[str, float | None] = {
+    training_insights: dict[str, Any],
+) -> dict[str, Any]:
+    chart_data: dict[str, Any] = {
         "user_daily_exercise": None,
         "pop_daily_exercise": None,
         "user_avg_duration": None,
         "pop_avg_duration": None,
         "current_score": None,
         "projected_score": None,
+        "weekly_labels": training_insights["weekly_labels"],
+        "weekly_minutes": training_insights["weekly_minutes"],
+        "weekly_sessions": training_insights["weekly_sessions"],
+        "intensity_labels": training_insights["intensity_labels"],
+        "intensity_counts": training_insights["intensity_counts"],
+        "target_weekly_minutes": training_insights["target_weekly_minutes"],
     }
 
     if fitness_summary.get("has_data"):
@@ -379,6 +612,31 @@ def fetch_workouts(filters: dict[str, str] | None = None) -> list[dict[str, Any]
     return fetch_all(query, params)
 
 
+def build_workout_metrics(
+    workouts: list[dict[str, Any]],
+    filters: dict[str, str],
+) -> dict[str, Any]:
+    durations = [
+        workout["total_duration_minutes"]
+        for workout in workouts
+        if workout.get("total_duration_minutes") is not None
+    ]
+    intensities = [
+        workout["perceived_intensity"]
+        for workout in workouts
+        if workout.get("perceived_intensity") is not None
+    ]
+
+    return {
+        "session_count": len(workouts),
+        "total_minutes": sum(durations),
+        "avg_duration": sum(durations) / len(durations) if durations else None,
+        "avg_intensity": sum(intensities) / len(intensities) if intensities else None,
+        "latest_date": workouts[0]["workout_date"] if workouts else None,
+        "active_filter_count": sum(1 for value in filters.values() if value),
+    }
+
+
 def fetch_workout(workout_id: int) -> dict[str, Any] | None:
     return fetch_one("SELECT * FROM workout_sessions WHERE workout_id = ?", (workout_id,))
 
@@ -398,12 +656,14 @@ def build_workout_values(form: Any) -> tuple[Any, ...]:
 
 def render_workouts_page(workout: dict[str, Any] | None = None) -> str:
     filters = get_workout_filters()
+    workouts = fetch_workouts(filters)
 
     return render_template(
         "workouts.html",
         active_view="workouts",
         filters=filters,
-        workouts=fetch_workouts(filters),
+        workouts=workouts,
+        workout_metrics=build_workout_metrics(workouts, filters),
         workout=workout,
         form_action=(
             url_for("create_workout")
@@ -430,13 +690,24 @@ def index() -> str:
 def analytics() -> str:
     external_stats = compute_external_stats()
     fitness_summary = compute_fitness_summary(DEFAULT_USER_ID)
+    training_insights = build_training_insights(DEFAULT_USER_ID)
+    recommendations = build_training_recommendations(
+        fitness_summary,
+        training_insights,
+    )
 
     return render_template(
         "analytics.html",
         active_view="analytics",
         external_stats=external_stats,
         fitness_summary=fitness_summary,
-        chart_data=build_chart_data(external_stats, fitness_summary),
+        training_insights=training_insights,
+        recommendations=recommendations,
+        chart_data=build_chart_data(
+            external_stats,
+            fitness_summary,
+            training_insights,
+        ),
     )
 
 

@@ -1,14 +1,35 @@
 # FitFuture
 
-FitFuture is a Flask fitness tracking app where a user can log workouts, maintain a simple profile, and compare recent activity against public population datasets. The current version is intentionally lightweight, but it now has a cleaner structure that is easier to extend into a portfolio-ready project.
+FitFuture is a Flask fitness intelligence dashboard that helps users log workouts, understand training consistency, and compare recent activity against public population datasets. The project is intentionally built as a portfolio-ready full-stack prototype: it combines CRUD workflows, SQLite persistence, data processing with pandas, Chart.js visualizations, and a polished responsive frontend.
 
-## What the app does
+## Product idea
 
-- Tracks workout sessions with date, duration, intensity, source, and notes.
-- Stores a simple user profile for age and gender based comparisons.
-- Summarizes recent training volume over the last 30 days.
-- Estimates simple percentile comparisons using Kaggle datasets.
-- Visualizes recent activity vs population averages with Chart.js.
+Most simple workout trackers show what happened. FitFuture is designed to answer a more useful question:
+
+> Am I training consistently enough, and how does my recent activity compare to similar people?
+
+The app currently focuses on one demo user, but the architecture is ready to evolve toward authentication, multiple users, richer goals, and production deployment.
+
+## Current features
+
+- Workout session logging with date, time, duration, perceived intensity, source, and notes.
+- Editable user profile for age and gender based cohort comparisons.
+- Filterable workout ledger with dashboard metrics for volume, session count, duration, and intensity.
+- 30-day fitness summary with weekly training volume, average session duration, and simple score projection.
+- 8-week training trend analysis with weekly minutes, sessions, active days, best week, and consistency rate.
+- Intensity-zone breakdown across recovery, base, hard, and peak training sessions.
+- Recommendation cards that adapt to recent volume, intensity, and consistency.
+- Population comparisons using public Kaggle datasets.
+- Responsive dark fitness-dashboard UI built with Flask templates, CSS, and Chart.js.
+
+## Tech stack
+
+- Python
+- Flask
+- SQLite
+- pandas
+- Chart.js
+- HTML/CSS/Jinja templates
 
 ## Project structure
 
@@ -30,16 +51,18 @@ FitFuture/
 
 ## Main file breakdown
 
-`main.py` is now organized into four sections:
+`main.py` is organized into focused sections:
 
 1. Database helpers
-   Creates the SQLite tables, seeds a default user/profile, and provides small query helpers.
+   Creates the SQLite tables, seeds a default user/profile, and provides reusable query helpers.
 2. Dataset helpers
-   Loads only the columns needed from the large CSVs and caches summary stats for analytics.
+   Loads only the needed CSV columns and caches population summary stats.
 3. Analytics helpers
-   Computes the 30 day workout summary, cohort comparisons, and chart data.
-4. Route handlers
-   Renders the workouts and analytics pages and handles create, update, delete, and profile actions.
+   Computes recent training volume, cohort percentiles, 8-week trends, intensity zones, consistency, and recommendations.
+4. Workout helpers
+   Handles filters, workout form parsing, metrics, and CRUD data access.
+5. Route handlers
+   Renders the workouts and analytics views and processes profile/workout actions.
 
 ## Local setup
 
@@ -50,22 +73,29 @@ pip install -r requirements.txt
 python main.py
 ```
 
-Then open `http://127.0.0.1:5000`.
+Then open:
 
-## Why this refactor matters
+```text
+http://127.0.0.1:5000
+```
 
-- App logic is separated from presentation.
-- Templates and styling are now in standard Flask folders.
-- The repo is easier to navigate and easier to deploy later.
-- Large CSV files are read more efficiently by loading only the columns the app actually uses.
+## Portfolio highlights
 
-## Good next steps
+- Demonstrates full-stack Flask development without hiding the backend behind a framework generator.
+- Shows practical data work with multiple large CSV datasets and cached pandas summaries.
+- Uses custom analytics logic instead of static placeholder charts.
+- Includes a cohesive product direction: training intelligence, cohort benchmarking, and next-step guidance.
+- Keeps the first version simple enough to understand while leaving clear room for production-grade iteration.
 
-- Split database logic into a dedicated module and add migrations.
-- Add form validation and basic error handling.
-- Introduce tests for analytics helpers and route behavior.
-- Add environment based config and a production WSGI server for deployment.
-- Replace the single hardcoded user flow with authentication.
+## Roadmap
+
+- Add authentication and per-user workout ownership.
+- Split the app into Flask Blueprints, service modules, and database modules.
+- Add SQLAlchemy or migration-backed persistence.
+- Add form validation and user-facing error states.
+- Add tests for analytics helpers, CRUD routes, and profile updates.
+- Add goal setting, personal records, streak history, and recovery tracking.
+- Deploy the app with production config and a public demo URL.
 
 ## Dataset citations
 
