@@ -1,18 +1,24 @@
 from __future__ import annotations
 
+import os
 import sqlite3
 from datetime import date, datetime, timedelta
+from functools import wraps
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
-from flask import Flask, abort, redirect, render_template, request, url_for
+from flask import Flask, abort, redirect, render_template, request, session, url_for
+from werkzeug.security import check_password_hash, generate_password_hash
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("FITFUTURE_SECRET_KEY", "dev-fitfuture-secret-key")
 
 BASE_DIR = Path(__file__).resolve().parent
 DB_PATH = BASE_DIR / "fitfuture.db"
 DEFAULT_USER_ID = 1
+DEMO_USER_EMAIL = "test@example.com"
+DEMO_USER_PASSWORD = "fitfuture123"
 ANALYTICS_WINDOW_DAYS = 30
 TREND_WINDOW_WEEKS = 8
 WEEKLY_VOLUME_TARGET_MINUTES = 150
@@ -79,16 +85,28 @@ def fetch_all(
     return [dict(row) for row in rows]
 
 
-def ensure_default_user(cursor: sqlite3.Cursor) -> None:
-    cursor.execute("SELECT COUNT(*) AS c FROM users")
-    if cursor.fetchone()["c"] == 0:
+def ensure_default_user(cursor: sqlite3.Cursor) -> int:
+    cursor.execute("SELECT * FROM users WHERE email = ?", (DEMO_USER_EMAIL,))
+    user = cursor.fetchone()
+    password_hash = generate_password_hash(DEMO_USER_PASSWORD)
+
+    if user is None:
         cursor.execute(
             """
             INSERT INTO users (email, password_hash, created_at, status)
             VALUES (?, ?, ?, ?)
             """,
-            ("test@example.com", "hash", datetime.utcnow().isoformat(), "ACTIVE"),
+            (DEMO_USER_EMAIL, password_hash, datetime.utcnow().isoformat(), "ACTIVE"),
         )
+        return int(cursor.lastrowid)
+
+    if user["password_hash"] == "hash":
+        cursor.execute(
+            "UPDATE users SET password_hash = ? WHERE user_id = ?",
+            (password_hash, user["user_id"]),
+        )
+
+    return int(user["user_id"])
 
 
 def ensure_default_profile(
@@ -154,8 +172,47 @@ def init_db() -> None:
             """
         )
 
-        ensure_default_user(cur)
-        ensure_default_profile(cur)
+        default_user_id = ensure_default_user(cur)
+        ensure_default_profile(cur, default_user_id)
+
+
+# ===========================================================
+# AUTH HELPERS
+# ===========================================================
+
+def get_current_user() -> dict[str, Any] | None:
+    user_id = session.get("user_id")
+    if user_id is None:
+        return None
+
+    return fetch_one(
+        "SELECT user_id, email, created_at, status FROM users WHERE user_id = ?",
+        (user_id,),
+    )
+
+
+def get_current_user_id() -> int:
+    user_id = session.get("user_id")
+    if user_id is None:
+        abort(401)
+
+    return int(user_id)
+
+
+def login_required(view: Any) -> Any:
+    @wraps(view)
+    def wrapped_view(*args: Any, **kwargs: Any) -> Any:
+        if session.get("user_id") is None:
+            return redirect(url_for("login", next=request.path))
+
+        return view(*args, **kwargs)
+
+    return wrapped_view
+
+
+@app.context_processor
+def inject_current_user() -> dict[str, Any]:
+    return {"current_user": get_current_user()}
 
 
 # ===========================================================
@@ -590,9 +647,12 @@ def get_workout_filters() -> dict[str, str]:
     }
 
 
-def fetch_workouts(filters: dict[str, str] | None = None) -> list[dict[str, Any]]:
-    query = "SELECT * FROM workout_sessions WHERE 1=1"
-    params: list[Any] = []
+def fetch_workouts(
+    user_id: int,
+    filters: dict[str, str] | None = None,
+) -> list[dict[str, Any]]:
+    query = "SELECT * FROM workout_sessions WHERE user_id = ?"
+    params: list[Any] = [user_id]
 
     if filters:
         if filters["min_date"]:
@@ -637,13 +697,16 @@ def build_workout_metrics(
     }
 
 
-def fetch_workout(workout_id: int) -> dict[str, Any] | None:
-    return fetch_one("SELECT * FROM workout_sessions WHERE workout_id = ?", (workout_id,))
+def fetch_workout(workout_id: int, user_id: int) -> dict[str, Any] | None:
+    return fetch_one(
+        "SELECT * FROM workout_sessions WHERE workout_id = ? AND user_id = ?",
+        (workout_id, user_id),
+    )
 
 
-def build_workout_values(form: Any) -> tuple[Any, ...]:
+def build_workout_values(form: Any, user_id: int) -> tuple[Any, ...]:
     return (
-        int(form["user_id"]),
+        user_id,
         form["workout_date"],
         parse_optional_text(form.get("start_time")),
         parse_optional_text(form.get("end_time")),
@@ -655,8 +718,9 @@ def build_workout_values(form: Any) -> tuple[Any, ...]:
 
 
 def render_workouts_page(workout: dict[str, Any] | None = None) -> str:
+    user_id = get_current_user_id()
     filters = get_workout_filters()
-    workouts = fetch_workouts(filters)
+    workouts = fetch_workouts(user_id, filters)
 
     return render_template(
         "workouts.html",
@@ -670,7 +734,7 @@ def render_workouts_page(workout: dict[str, Any] | None = None) -> str:
             if workout is None
             else url_for("update_workout", workout_id=workout["workout_id"])
         ),
-        profile=get_user_profile(DEFAULT_USER_ID),
+        profile=get_user_profile(user_id),
     )
 
 
@@ -681,16 +745,101 @@ init_db()
 # ROUTES
 # ===========================================================
 
+@app.route("/login", methods=["GET", "POST"])
+def login() -> Any:
+    error = None
+
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+        user = fetch_one("SELECT * FROM users WHERE email = ?", (email,))
+
+        if user is None or not check_password_hash(user["password_hash"], password):
+            error = "Invalid email or password."
+        elif user["status"] != "ACTIVE":
+            error = "This account is not active."
+        else:
+            session.clear()
+            session["user_id"] = user["user_id"]
+            next_url = request.args.get("next") or url_for("index")
+            return redirect(next_url if next_url.startswith("/") else url_for("index"))
+
+    return render_template(
+        "auth.html",
+        active_view="auth",
+        mode="login",
+        error=error,
+        demo_email=DEMO_USER_EMAIL,
+        demo_password=DEMO_USER_PASSWORD,
+    )
+
+
+@app.route("/register", methods=["GET", "POST"])
+def register() -> Any:
+    error = None
+
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        password = request.form.get("password", "")
+
+        if not email or not password:
+            error = "Email and password are required."
+        elif len(password) < 8:
+            error = "Password must be at least 8 characters."
+        else:
+            try:
+                with get_db() as conn:
+                    cur = conn.cursor()
+                    cur.execute(
+                        """
+                        INSERT INTO users (email, password_hash, created_at, status)
+                        VALUES (?, ?, ?, ?)
+                        """,
+                        (
+                            email,
+                            generate_password_hash(password),
+                            datetime.utcnow().isoformat(),
+                            "ACTIVE",
+                        ),
+                    )
+                    user_id = int(cur.lastrowid)
+                    ensure_default_profile(cur, user_id)
+            except sqlite3.IntegrityError:
+                error = "An account with that email already exists."
+            else:
+                session.clear()
+                session["user_id"] = user_id
+                return redirect(url_for("index"))
+
+    return render_template(
+        "auth.html",
+        active_view="auth",
+        mode="register",
+        error=error,
+        demo_email=DEMO_USER_EMAIL,
+        demo_password=DEMO_USER_PASSWORD,
+    )
+
+
+@app.route("/logout")
+def logout() -> Any:
+    session.clear()
+    return redirect(url_for("login"))
+
+
 @app.route("/")
+@login_required
 def index() -> str:
     return render_workouts_page()
 
 
 @app.route("/analytics")
+@login_required
 def analytics() -> str:
+    user_id = get_current_user_id()
     external_stats = compute_external_stats()
-    fitness_summary = compute_fitness_summary(DEFAULT_USER_ID)
-    training_insights = build_training_insights(DEFAULT_USER_ID)
+    fitness_summary = compute_fitness_summary(user_id)
+    training_insights = build_training_insights(user_id)
     recommendations = build_training_recommendations(
         fitness_summary,
         training_insights,
@@ -712,7 +861,9 @@ def analytics() -> str:
 
 
 @app.route("/workouts", methods=["POST"])
+@login_required
 def create_workout() -> Any:
+    user_id = get_current_user_id()
     with get_db() as conn:
         conn.execute(
             """
@@ -721,15 +872,16 @@ def create_workout() -> Any:
              total_duration_minutes, perceived_intensity, source, notes)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            build_workout_values(request.form),
+            build_workout_values(request.form, user_id),
         )
 
     return redirect(url_for("index"))
 
 
 @app.route("/workouts/<int:workout_id>/edit")
+@login_required
 def edit_workout(workout_id: int) -> str:
-    workout = fetch_workout(workout_id)
+    workout = fetch_workout(workout_id, get_current_user_id())
     if workout is None:
         abort(404)
 
@@ -737,7 +889,9 @@ def edit_workout(workout_id: int) -> str:
 
 
 @app.route("/workouts/<int:workout_id>", methods=["POST"])
+@login_required
 def update_workout(workout_id: int) -> Any:
+    user_id = get_current_user_id()
     with get_db() as conn:
         conn.execute(
             """
@@ -745,35 +899,44 @@ def update_workout(workout_id: int) -> Any:
             SET user_id = ?, workout_date = ?, start_time = ?, end_time = ?,
                 total_duration_minutes = ?, perceived_intensity = ?,
                 source = ?, notes = ?
-            WHERE workout_id = ?
+            WHERE workout_id = ? AND user_id = ?
             """,
-            build_workout_values(request.form) + (workout_id,),
+            build_workout_values(request.form, user_id) + (workout_id, user_id),
         )
 
     return redirect(url_for("index"))
 
 
 @app.route("/workouts/<int:workout_id>/delete", methods=["POST"])
+@login_required
 def delete_workout(workout_id: int) -> Any:
+    user_id = get_current_user_id()
     with get_db() as conn:
-        conn.execute("DELETE FROM workout_sessions WHERE workout_id = ?", (workout_id,))
+        conn.execute(
+            "DELETE FROM workout_sessions WHERE workout_id = ? AND user_id = ?",
+            (workout_id, user_id),
+        )
 
     return redirect(url_for("index"))
 
 
 @app.route("/profile", methods=["POST"])
+@login_required
 def update_profile() -> Any:
+    user_id = get_current_user_id()
     with get_db() as conn:
         conn.execute(
             """
-            UPDATE user_profiles
-            SET age = ?, gender = ?
-            WHERE user_id = ?
+            INSERT INTO user_profiles (user_id, age, gender)
+            VALUES (?, ?, ?)
+            ON CONFLICT(user_id) DO UPDATE SET
+                age = excluded.age,
+                gender = excluded.gender
             """,
             (
+                user_id,
                 parse_optional_int(request.form.get("age")),
                 parse_optional_text(request.form.get("gender")),
-                DEFAULT_USER_ID,
             ),
         )
 

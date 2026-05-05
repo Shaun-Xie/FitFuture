@@ -277,16 +277,6 @@
             <form method="post" action="{{ form_action }}">
                 <div class="field-row">
                     <div class="field">
-                        <label for="user_id">User ID</label>
-                        <input
-                            type="number"
-                            id="user_id"
-                            name="user_id"
-                            value="{{ workout.user_id if workout else 1 }}"
-                            required
-                        >
-                    </div>
-                    <div class="field">
                         <label for="workout_date">Date</label>
                         <input
                             type="date"

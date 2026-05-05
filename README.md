@@ -12,6 +12,8 @@ The app currently focuses on one demo user, but the architecture is ready to evo
 
 ## Current features
 
+- Login, logout, and registration with password hashing.
+- Per-user workout ownership enforced on protected routes.
 - Workout session logging with date, time, duration, perceived intensity, source, and notes.
 - Editable user profile for age and gender based cohort comparisons.
 - Filterable workout ledger with dashboard metrics for volume, session count, duration, and intensity.
@@ -82,6 +84,7 @@ http://127.0.0.1:5000
 ## Portfolio highlights
 
 - Demonstrates full-stack Flask development without hiding the backend behind a framework generator.
+- Includes session authentication and user-scoped CRUD behavior.
 - Shows practical data work with multiple large CSV datasets and cached pandas summaries.
 - Uses custom analytics logic instead of static placeholder charts.
 - Includes a cohesive product direction: training intelligence, cohort benchmarking, and next-step guidance.
@@ -89,7 +92,6 @@ http://127.0.0.1:5000
 
 ## Roadmap
 
-- Add authentication and per-user workout ownership.
 - Split the app into Flask Blueprints, service modules, and database modules.
 - Add SQLAlchemy or migration-backed persistence.
 - Add form validation and user-facing error states.

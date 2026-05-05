@@ -21,27 +21,52 @@
                 </div>
             </div>
             <div class="topbar-actions">
-                <span class="status-pill">
-                    <span class="status-dot"></span>
-                    Portfolio build
-                </span>
+                {% if current_user %}
+                    <span class="status-pill">
+                        <span class="status-dot"></span>
+                        {{ current_user.email }}
+                    </span>
+                    <a class="btn btn-ghost btn-compact" href="{{ url_for('logout') }}">Logout</a>
+                {% else %}
+                    <span class="status-pill">
+                        <span class="status-dot"></span>
+                        Portfolio build
+                    </span>
+                {% endif %}
             </div>
         </div>
         <div class="nav-tabs">
-            <a
-                href="{{ url_for('index') }}"
-                class="nav-tab {% if active_view == 'workouts' %}nav-tab-active{% endif %}"
-            >
-                <span class="nav-icon">01</span>
-                Workouts
-            </a>
-            <a
-                href="{{ url_for('analytics') }}"
-                class="nav-tab {% if active_view == 'analytics' %}nav-tab-active{% endif %}"
-            >
-                <span class="nav-icon">02</span>
-                Analytics
-            </a>
+            {% if current_user %}
+                <a
+                    href="{{ url_for('index') }}"
+                    class="nav-tab {% if active_view == 'workouts' %}nav-tab-active{% endif %}"
+                >
+                    <span class="nav-icon">01</span>
+                    Workouts
+                </a>
+                <a
+                    href="{{ url_for('analytics') }}"
+                    class="nav-tab {% if active_view == 'analytics' %}nav-tab-active{% endif %}"
+                >
+                    <span class="nav-icon">02</span>
+                    Analytics
+                </a>
+            {% else %}
+                <a
+                    href="{{ url_for('login') }}"
+                    class="nav-tab {% if active_view == 'auth' and mode == 'login' %}nav-tab-active{% endif %}"
+                >
+                    <span class="nav-icon">01</span>
+                    Login
+                </a>
+                <a
+                    href="{{ url_for('register') }}"
+                    class="nav-tab {% if active_view == 'auth' and mode == 'register' %}nav-tab-active{% endif %}"
+                >
+                    <span class="nav-icon">02</span>
+                    Register
+                </a>
+            {% endif %}
         </div>
     </header>
 

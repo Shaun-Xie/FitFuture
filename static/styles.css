@@ -127,6 +127,12 @@ textarea {
     min-width: 0;
 }
 
+.topbar-actions {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
 .brand-logo {
     width: 42px;
     height: 42px;
@@ -260,6 +266,32 @@ textarea {
         linear-gradient(120deg, rgba(53, 208, 127, 0.12), transparent 50%),
         rgba(9, 17, 14, 0.88);
     box-shadow: var(--shadow);
+}
+
+.auth-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.7fr);
+    gap: 14px;
+    align-items: stretch;
+}
+
+.auth-hero {
+    min-height: 540px;
+}
+
+.auth-panel {
+    align-self: center;
+}
+
+.form-alert {
+    margin-bottom: 14px;
+    padding: 11px 12px;
+    border: 1px solid rgba(255, 90, 102, 0.34);
+    border-radius: var(--radius);
+    background: rgba(255, 90, 102, 0.1);
+    color: #ffd9dd;
+    font-size: 0.86rem;
+    font-weight: 750;
 }
 
 .dashboard-hero::after {
@@ -1035,9 +1067,14 @@ tbody tr:last-child td {
 
 @media (max-width: 1040px) {
     .dashboard-hero,
+    .auth-layout,
     .workout-layout,
     .analytics-layout {
         grid-template-columns: 1fr;
+    }
+
+    .auth-hero {
+        min-height: 360px;
     }
 
     .training-visual,
@@ -1071,10 +1108,11 @@ tbody tr:last-child td {
 
     .topbar-actions {
         width: 100%;
+        justify-content: stretch;
     }
 
     .status-pill {
-        width: 100%;
+        flex: 1 1 auto;
         justify-content: center;
     }
 

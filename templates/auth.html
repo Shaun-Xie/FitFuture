@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="auth-layout">
+    <div class="dashboard-hero auth-hero">
+        <div class="hero-copy">
+            <p class="eyebrow">FitFuture Access</p>
+            <h1>Personal training intelligence starts with your own data.</h1>
+            <p class="hero-lede">
+                Secure sessions, private workout ownership, and analytics scoped to each account.
+            </p>
+            <div class="hero-meta">
+                <span>Session protected</span>
+                <span>Per-user workouts</span>
+                <span>Cohort analytics</span>
+            </div>
+        </div>
+        <div class="analytics-visual" aria-hidden="true">
+            <div class="score-orbit">
+                <strong>FF</strong>
+                <span>secure</span>
+            </div>
+            <div class="projection-line">
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    </div>
+
+    <section class="panel auth-panel">
+        <div class="panel-header compact">
+            <div>
+                <p class="section-kicker">{{ 'Welcome Back' if mode == 'login' else 'Create Account' }}</p>
+                <h2>{{ 'Log In' if mode == 'login' else 'Register' }}</h2>
+            </div>
+        </div>
+
+        {% if error %}
+            <div class="form-alert">{{ error }}</div>
+        {% endif %}
+
+        <form method="post">
+            <div class="field-row">
+                <div class="field field-full">
+                    <label for="email">Email</label>
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        autocomplete="email"
+                        value="{{ demo_email if mode == 'login' else '' }}"
+                        required
+                    >
+                </div>
+            </div>
+            <div class="field-row">
+                <div class="field field-full">
+                    <label for="password">Password</label>
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        autocomplete="{{ 'current-password' if mode == 'login' else 'new-password' }}"
+                        value="{{ demo_password if mode == 'login' else '' }}"
+                        required
+                    >
+                </div>
+            </div>
+            <div class="btn-row">
+                <button type="submit" class="btn btn-primary">
+                    {{ 'Log In' if mode == 'login' else 'Create Account' }}
+                </button>
+                {% if mode == 'login' %}
+                    <a class="btn btn-ghost" href="{{ url_for('register') }}">Register</a>
+                {% else %}
+                    <a class="btn btn-ghost" href="{{ url_for('login') }}">Log In</a>
+                {% endif %}
+            </div>
+        </form>
+    </section>
+</section>
+{% endblock %}
