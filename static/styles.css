@@ -283,6 +283,12 @@ textarea {
     align-self: center;
 }
 
+.flash-stack {
+    display: grid;
+    gap: 8px;
+    margin-bottom: 14px;
+}
+
 .form-alert {
     margin-bottom: 14px;
     padding: 11px 12px;
@@ -292,6 +298,16 @@ textarea {
     color: #ffd9dd;
     font-size: 0.86rem;
     font-weight: 750;
+}
+
+.flash-stack .form-alert {
+    margin-bottom: 0;
+}
+
+.form-alert-success {
+    border-color: rgba(53, 208, 127, 0.36);
+    background: rgba(53, 208, 127, 0.11);
+    color: #c8ffdd;
 }
 
 .dashboard-hero::after {

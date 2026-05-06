@@ -41,6 +41,14 @@ def test_registration_creates_profile_and_session(client):
     assert dashboard.status_code == 200
 
 
+def test_registration_validation_shows_user_facing_error(client):
+    response = register(client, "not-an-email", "short")
+
+    assert response.status_code == 400
+    assert b"Enter a valid email address." in response.data
+    assert b"Password must be at least 8 characters." in response.data
+
+
 def test_workout_creation_uses_logged_in_user_not_form_user_id(client):
     register(client, "owner@example.com", "password123")
     owner = db.fetch_one("SELECT * FROM users WHERE email = ?", ("owner@example.com",))
@@ -65,6 +73,43 @@ def test_workout_creation_uses_logged_in_user_not_form_user_id(client):
     workout = db.fetch_one("SELECT * FROM workout_sessions WHERE notes = ?", ("Ownership test",))
     assert workout is not None
     assert workout["user_id"] == owner["user_id"]
+
+
+def test_workout_validation_rejects_bad_input(client):
+    register(client, "validation@example.com", "password123")
+
+    response = client.post(
+        "/workouts",
+        data={
+            "workout_date": "",
+            "total_duration_minutes": "0",
+            "perceived_intensity": "11",
+            "source": "spreadsheet",
+            "notes": "Invalid workout",
+        },
+    )
+
+    assert response.status_code == 400
+    assert b"Workout date is required." in response.data
+    assert b"Duration must be between 1 and 600 minutes." in response.data
+    assert b"Effort must be between 1 and 10." in response.data
+    assert b"Source must be manual, app, device, or blank." in response.data
+
+    workout = db.fetch_one("SELECT * FROM workout_sessions WHERE notes = ?", ("Invalid workout",))
+    assert workout is None
+
+
+def test_profile_validation_rejects_bad_input(client):
+    register(client, "profile@example.com", "password123")
+
+    response = client.post(
+        "/profile",
+        data={"age": "9", "gender": "X"},
+    )
+
+    assert response.status_code == 400
+    assert b"Age must be between 10 and 90." in response.data
+    assert b"Gender must be male, female, or not set." in response.data
 
 
 def test_users_cannot_edit_or_delete_each_others_workouts(client):

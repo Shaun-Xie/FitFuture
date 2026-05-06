@@ -238,6 +238,13 @@
                 </div>
             </div>
             <form method="post" action="{{ url_for('workouts.update_profile') }}">
+                {% if profile_errors %}
+                    <div class="form-alert">
+                        {% for error in profile_errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
                 <div class="field-row">
                     <div class="field">
                         <label for="age">Age</label>
@@ -247,13 +254,13 @@
                             name="age"
                             min="10"
                             max="90"
-                            value="{{ profile.age if profile else '' }}"
+                            value="{{ (profile_form.age if profile_form else '') or '' }}"
                         >
                     </div>
                     <div class="field">
                         <label for="gender">Gender</label>
                         <select id="gender" name="gender">
-                            {% set g = profile.gender if profile else '' %}
+                            {% set g = profile_form.gender if profile_form else '' %}
                             <option value="" {% if not g %}selected{% endif %}>Not set</option>
                             <option value="M" {% if g == 'M' %}selected{% endif %}>Male</option>
                             <option value="F" {% if g == 'F' %}selected{% endif %}>Female</option>
@@ -275,6 +282,13 @@
             </div>
 
             <form method="post" action="{{ form_action }}">
+                {% if workout_errors %}
+                    <div class="form-alert">
+                        {% for error in workout_errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
                 <div class="field-row">
                     <div class="field">
                         <label for="workout_date">Date</label>
@@ -282,7 +296,7 @@
                             type="date"
                             id="workout_date"
                             name="workout_date"
-                            value="{{ workout.workout_date if workout else '' }}"
+                            value="{{ (workout_form.workout_date if workout_form else '') or '' }}"
                             required
                         >
                     </div>
@@ -295,7 +309,7 @@
                             type="time"
                             id="start_time"
                             name="start_time"
-                            value="{{ workout.start_time if workout else '' }}"
+                            value="{{ (workout_form.start_time if workout_form else '') or '' }}"
                         >
                     </div>
                     <div class="field">
@@ -304,7 +318,7 @@
                             type="time"
                             id="end_time"
                             name="end_time"
-                            value="{{ workout.end_time if workout else '' }}"
+                            value="{{ (workout_form.end_time if workout_form else '') or '' }}"
                         >
                     </div>
                 </div>
@@ -318,7 +332,7 @@
                             name="total_duration_minutes"
                             min="0"
                             placeholder="Minutes"
-                            value="{{ workout.total_duration_minutes if workout else '' }}"
+                            value="{{ (workout_form.total_duration_minutes if workout_form else '') or '' }}"
                         >
                     </div>
                     <div class="field">
@@ -330,7 +344,7 @@
                             min="1"
                             max="10"
                             placeholder="1-10"
-                            value="{{ workout.perceived_intensity if workout else '' }}"
+                            value="{{ (workout_form.perceived_intensity if workout_form else '') or '' }}"
                         >
                     </div>
                 </div>
@@ -339,7 +353,7 @@
                     <div class="field">
                         <label for="source">Source</label>
                         <select id="source" name="source">
-                            {% set src = workout.source if workout else '' %}
+                            {% set src = workout_form.source if workout_form else '' %}
                             <option value="" {% if not src %}selected{% endif %}>Not specified</option>
                             <option value="manual" {% if src == 'manual' %}selected{% endif %}>Manual</option>
                             <option value="app" {% if src == 'app' %}selected{% endif %}>App</option>
@@ -356,7 +370,7 @@
                             name="notes"
                             rows="3"
                             placeholder="PRs, recovery, focus."
-                        >{{ workout.notes if workout else '' }}</textarea>
+                        >{{ (workout_form.notes if workout_form else '') or '' }}</textarea>
                     </div>
                 </div>
 

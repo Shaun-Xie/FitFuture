@@ -5,11 +5,12 @@ from datetime import datetime
 from functools import wraps
 from typing import Any
 
-from flask import Blueprint, abort, redirect, render_template, request, session, url_for
+from flask import Blueprint, abort, flash, redirect, render_template, request, session, url_for
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from . import config
 from .db import ensure_default_profile, fetch_one, get_db
+from .validation import validate_auth_form
 
 auth_bp = Blueprint("auth", __name__)
 
@@ -46,46 +47,54 @@ def login_required(view: Any) -> Any:
 
 @auth_bp.route("/login", methods=["GET", "POST"])
 def login() -> Any:
-    error = None
+    errors: list[str] = []
 
     if request.method == "POST":
-        email = request.form.get("email", "").strip().lower()
-        password = request.form.get("password", "")
-        user = fetch_one("SELECT * FROM users WHERE email = ?", (email,))
+        values, errors = validate_auth_form(
+            request.form,
+            require_password_length=False,
+        )
+        user = fetch_one("SELECT * FROM users WHERE email = ?", (values["email"],))
 
-        if user is None or not check_password_hash(user["password_hash"], password):
-            error = "Invalid email or password."
-        elif user["status"] != "ACTIVE":
-            error = "This account is not active."
-        else:
+        if not errors and (
+            user is None
+            or not check_password_hash(user["password_hash"], values["password"])
+        ):
+            errors.append("Invalid email or password.")
+        elif not errors and user["status"] != "ACTIVE":
+            errors.append("This account is not active.")
+
+        if not errors:
             session.clear()
             session["user_id"] = user["user_id"]
+            flash("Welcome back. Your dashboard is ready.", "success")
             next_url = request.args.get("next") or url_for("workouts.index")
             return redirect(next_url if next_url.startswith("/") else url_for("workouts.index"))
 
-    return render_template(
-        "auth.html",
-        active_view="auth",
-        mode="login",
-        error=error,
-        demo_email=config.DEMO_USER_EMAIL,
-        demo_password=config.DEMO_USER_PASSWORD,
+    return (
+        render_template(
+            "auth.html",
+            active_view="auth",
+            mode="login",
+            errors=errors,
+            demo_email=config.DEMO_USER_EMAIL,
+            demo_password=config.DEMO_USER_PASSWORD,
+        ),
+        400 if errors else 200,
     )
 
 
 @auth_bp.route("/register", methods=["GET", "POST"])
 def register() -> Any:
-    error = None
+    errors: list[str] = []
 
     if request.method == "POST":
-        email = request.form.get("email", "").strip().lower()
-        password = request.form.get("password", "")
+        values, errors = validate_auth_form(
+            request.form,
+            require_password_length=True,
+        )
 
-        if not email or not password:
-            error = "Email and password are required."
-        elif len(password) < 8:
-            error = "Password must be at least 8 characters."
-        else:
+        if not errors:
             try:
                 with get_db() as conn:
                     cur = conn.cursor()
@@ -95,8 +104,8 @@ def register() -> Any:
                         VALUES (?, ?, ?, ?)
                         """,
                         (
-                            email,
-                            generate_password_hash(password),
+                            values["email"],
+                            generate_password_hash(values["password"]),
                             datetime.utcnow().isoformat(),
                             "ACTIVE",
                         ),
@@ -104,23 +113,28 @@ def register() -> Any:
                     user_id = int(cur.lastrowid)
                     ensure_default_profile(cur, user_id)
             except sqlite3.IntegrityError:
-                error = "An account with that email already exists."
+                errors.append("An account with that email already exists.")
             else:
                 session.clear()
                 session["user_id"] = user_id
+                flash("Account created. Your private dashboard is ready.", "success")
                 return redirect(url_for("workouts.index"))
 
-    return render_template(
-        "auth.html",
-        active_view="auth",
-        mode="register",
-        error=error,
-        demo_email=config.DEMO_USER_EMAIL,
-        demo_password=config.DEMO_USER_PASSWORD,
+    return (
+        render_template(
+            "auth.html",
+            active_view="auth",
+            mode="register",
+            errors=errors,
+            demo_email=config.DEMO_USER_EMAIL,
+            demo_password=config.DEMO_USER_PASSWORD,
+        ),
+        400 if errors else 200,
     )
 
 
 @auth_bp.route("/logout")
 def logout() -> Any:
     session.clear()
+    flash("You have been logged out.", "success")
     return redirect(url_for("auth.login"))

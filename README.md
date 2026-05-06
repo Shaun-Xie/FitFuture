@@ -15,6 +15,7 @@ The app includes a demo user for quick exploration, while registration allows ne
 - Login, logout, and registration with password hashing.
 - Per-user workout ownership enforced on protected routes.
 - Versioned SQLite migrations tracked in a `schema_migrations` table.
+- Server-side form validation with user-facing error and success states.
 - Workout session logging with date, time, duration, perceived intensity, source, and notes.
 - Editable user profile for age and gender based cohort comparisons.
 - Filterable workout ledger with dashboard metrics for volume, session count, duration, and intensity.
@@ -47,6 +48,7 @@ FitFuture/
 │   ├── datasets.py
 │   ├── db.py
 │   ├── users.py
+│   ├── validation.py
 │   ├── utils.py
 │   └── workouts.py
 ├── main.py
@@ -86,7 +88,9 @@ FitFuture/
    Loads only the needed CSV columns and caches population summary stats.
 7. `db.py`
    Runs versioned SQLite migrations, seeds the demo account, and exposes small query helpers.
-8. `config.py`, `users.py`, and `utils.py`
+8. `validation.py`
+   Validates auth, profile, and workout forms before data reaches SQLite.
+9. `config.py`, `users.py`, and `utils.py`
    Keep constants, profile lookup, parsing, and date utilities separated from route code.
 
 ## Local setup
@@ -125,16 +129,16 @@ The test suite uses isolated temporary SQLite databases, so route and analytics 
 - Uses an app factory, Flask Blueprints, and separated service/data modules.
 - Adds migration-backed SQLite persistence without introducing unnecessary framework weight.
 - Includes session authentication and user-scoped CRUD behavior.
+- Handles invalid form submissions with clear inline errors and success feedback.
 - Shows practical data work with multiple large CSV datasets and cached pandas summaries.
 - Uses custom analytics logic instead of static placeholder charts.
-- Includes pytest coverage for auth, protected routes, workout ownership, and analytics helpers.
+- Includes pytest coverage for auth, protected routes, validation, workout ownership, migrations, and analytics helpers.
 - Includes a cohesive product direction: training intelligence, cohort benchmarking, and next-step guidance.
 - Keeps the first version simple enough to understand while leaving clear room for production-grade iteration.
 
 ## Roadmap
 
 - Add SQLAlchemy or a richer repository layer if the schema grows.
-- Add form validation and user-facing error states.
 - Add goal setting, personal records, streak history, and recovery tracking.
 - Deploy the app with production config and a public demo URL.
 

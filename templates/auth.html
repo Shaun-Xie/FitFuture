@@ -37,8 +37,12 @@
             </div>
         </div>
 
-        {% if error %}
-            <div class="form-alert">{{ error }}</div>
+        {% if errors %}
+            <div class="form-alert">
+                {% for error in errors %}
+                    <div>{{ error }}</div>
+                {% endfor %}
+            </div>
         {% endif %}
 
         <form method="post">

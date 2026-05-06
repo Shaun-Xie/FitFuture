@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from typing import Any
 
-from flask import Blueprint, abort, redirect, render_template, request, url_for
+from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 
 from .auth import get_current_user_id, login_required
 from .db import fetch_all, fetch_one, get_db
 from .users import get_user_profile
 from .utils import parse_optional_int, parse_optional_text
+from .validation import validate_profile_form, validate_workout_form
 
 workouts_bp = Blueprint("workouts", __name__)
 
@@ -89,11 +90,17 @@ def build_workout_values(form: Any, user_id: int) -> tuple[Any, ...]:
         parse_optional_text(form.get("notes")),
     )
 
-
-def render_workouts_page(workout: dict[str, Any] | None = None) -> str:
+def render_workouts_page(
+    workout: dict[str, Any] | None = None,
+    workout_form: dict[str, Any] | None = None,
+    workout_errors: list[str] | None = None,
+    profile_form: dict[str, Any] | None = None,
+    profile_errors: list[str] | None = None,
+) -> str:
     user_id = get_current_user_id()
     filters = get_workout_filters()
     workouts = fetch_workouts(user_id, filters)
+    profile = get_user_profile(user_id)
 
     return render_template(
         "workouts.html",
@@ -102,12 +109,16 @@ def render_workouts_page(workout: dict[str, Any] | None = None) -> str:
         workouts=workouts,
         workout_metrics=build_workout_metrics(workouts, filters),
         workout=workout,
+        workout_form=workout_form or workout or {},
+        workout_errors=workout_errors or [],
+        profile_form=profile_form or profile or {},
+        profile_errors=profile_errors or [],
         form_action=(
             url_for("workouts.create_workout")
             if workout is None
             else url_for("workouts.update_workout", workout_id=workout["workout_id"])
         ),
-        profile=get_user_profile(user_id),
+        profile=profile,
     )
 
 
@@ -121,6 +132,16 @@ def index() -> str:
 @login_required
 def create_workout() -> Any:
     user_id = get_current_user_id()
+    values, errors = validate_workout_form(request.form)
+    if errors:
+        return (
+            render_workouts_page(
+                workout_form=values,
+                workout_errors=errors,
+            ),
+            400,
+        )
+
     with get_db() as conn:
         conn.execute(
             """
@@ -129,9 +150,10 @@ def create_workout() -> Any:
              total_duration_minutes, perceived_intensity, source, notes)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
             """,
-            build_workout_values(request.form, user_id),
+            build_workout_values(values, user_id),
         )
 
+    flash("Workout logged.", "success")
     return redirect(url_for("workouts.index"))
 
 
@@ -149,6 +171,21 @@ def edit_workout(workout_id: int) -> str:
 @login_required
 def update_workout(workout_id: int) -> Any:
     user_id = get_current_user_id()
+    workout = fetch_workout(workout_id, user_id)
+    if workout is None:
+        abort(404)
+
+    values, errors = validate_workout_form(request.form)
+    if errors:
+        return (
+            render_workouts_page(
+                workout=workout,
+                workout_form=values,
+                workout_errors=errors,
+            ),
+            400,
+        )
+
     with get_db() as conn:
         conn.execute(
             """
@@ -158,9 +195,10 @@ def update_workout(workout_id: int) -> Any:
                 source = ?, notes = ?
             WHERE workout_id = ? AND user_id = ?
             """,
-            build_workout_values(request.form, user_id) + (workout_id, user_id),
+            build_workout_values(values, user_id) + (workout_id, user_id),
         )
 
+    flash("Workout updated.", "success")
     return redirect(url_for("workouts.index"))
 
 
@@ -174,6 +212,7 @@ def delete_workout(workout_id: int) -> Any:
             (workout_id, user_id),
         )
 
+    flash("Workout deleted.", "success")
     return redirect(url_for("workouts.index"))
 
 
@@ -181,6 +220,16 @@ def delete_workout(workout_id: int) -> Any:
 @login_required
 def update_profile() -> Any:
     user_id = get_current_user_id()
+    values, errors = validate_profile_form(request.form)
+    if errors:
+        return (
+            render_workouts_page(
+                profile_form=values,
+                profile_errors=errors,
+            ),
+            400,
+        )
+
     with get_db() as conn:
         conn.execute(
             """
@@ -192,9 +241,10 @@ def update_profile() -> Any:
             """,
             (
                 user_id,
-                parse_optional_int(request.form.get("age")),
-                parse_optional_text(request.form.get("gender")),
+                values["age"],
+                values["gender"] or None,
             ),
         )
 
+    flash("Profile saved.", "success")
     return redirect(url_for("workouts.index"))
