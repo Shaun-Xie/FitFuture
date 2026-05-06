@@ -16,7 +16,11 @@
             {% if fitness_summary and fitness_summary.has_data %}
                 <span>{{ fitness_summary.weekly_minutes|round(0) }} min/week</span>
                 <span>{{ fitness_summary.avg_duration|round(0) }} min avg session</span>
-                <span>{{ training_insights.active_days }} active days</span>
+                {% if training_insights.avg_recovery_rating is not none %}
+                    <span>{{ training_insights.avg_recovery_rating|round(1) }}/5 readiness</span>
+                {% else %}
+                    <span>{{ training_insights.active_days }} active days</span>
+                {% endif %}
             {% else %}
                 <span>Awaiting workout data</span>
                 <span>30-day analysis window</span>
@@ -61,22 +65,38 @@
         <span class="metric-note">percent of last 8 weeks</span>
     </article>
     <article class="metric-tile">
-        <span class="metric-label">Active Streak</span>
+        <span class="metric-label">Recovery Avg</span>
         <strong>
-            {{ training_insights.active_week_streak }}
-        </strong>
-        <span class="metric-note">weeks with training</span>
-    </article>
-    <article class="metric-tile">
-        <span class="metric-label">3-Month Score</span>
-        <strong>
-            {% if fitness_summary and fitness_summary.has_data %}
-                {{ fitness_summary.projected_score|round(1) }}
+            {% if training_insights.avg_recovery_rating is not none %}
+                {{ training_insights.avg_recovery_rating|round(1) }}
             {% else %}
                 --
             {% endif %}
         </strong>
-        <span class="metric-note">projection</span>
+        <span class="metric-note">
+            {% if training_insights.recovery_samples %}
+                out of 5 across {{ training_insights.recovery_samples }} logs
+            {% else %}
+                add recovery scores
+            {% endif %}
+        </span>
+    </article>
+    <article class="metric-tile">
+        <span class="metric-label">Sleep Avg</span>
+        <strong>
+            {% if training_insights.avg_sleep_hours is not none %}
+                {{ training_insights.avg_sleep_hours|round(1) }}
+            {% else %}
+                --
+            {% endif %}
+        </strong>
+        <span class="metric-note">
+            {% if training_insights.sleep_samples %}
+                hours across {{ training_insights.sleep_samples }} logs
+            {% else %}
+                add sleep hours
+            {% endif %}
+        </span>
     </article>
 </section>
 

@@ -96,9 +96,38 @@ def migration_002_user_goals(cursor: sqlite3.Cursor) -> None:
     )
 
 
+def add_column_if_missing(
+    cursor: sqlite3.Cursor,
+    table_name: str,
+    column_name: str,
+    column_sql: str,
+) -> None:
+    existing_columns = {
+        row["name"] for row in cursor.execute(f"PRAGMA table_info({table_name})").fetchall()
+    }
+    if column_name not in existing_columns:
+        cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_sql}")
+
+
+def migration_003_recovery_tracking(cursor: sqlite3.Cursor) -> None:
+    add_column_if_missing(
+        cursor,
+        "workout_sessions",
+        "recovery_rating",
+        "recovery_rating INTEGER",
+    )
+    add_column_if_missing(
+        cursor,
+        "workout_sessions",
+        "sleep_hours",
+        "sleep_hours REAL",
+    )
+
+
 MIGRATIONS = (
     (1, "initial_schema", migration_001_initial_schema),
     (2, "user_goals", migration_002_user_goals),
+    (3, "recovery_tracking", migration_003_recovery_tracking),
 )
 
 

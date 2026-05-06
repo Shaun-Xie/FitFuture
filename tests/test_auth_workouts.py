@@ -68,6 +68,8 @@ def test_workout_creation_uses_logged_in_user_not_form_user_id(client):
             "end_time": "08:45",
             "total_duration_minutes": "45",
             "perceived_intensity": "7",
+            "recovery_rating": "4",
+            "sleep_hours": "7.5",
             "source": "manual",
             "notes": "Ownership test",
         },
@@ -79,6 +81,8 @@ def test_workout_creation_uses_logged_in_user_not_form_user_id(client):
     workout = db.fetch_one("SELECT * FROM workout_sessions WHERE notes = ?", ("Ownership test",))
     assert workout is not None
     assert workout["user_id"] == owner["user_id"]
+    assert workout["recovery_rating"] == 4
+    assert workout["sleep_hours"] == 7.5
 
 
 def test_workout_validation_rejects_bad_input(client):
@@ -90,6 +94,8 @@ def test_workout_validation_rejects_bad_input(client):
             "workout_date": "",
             "total_duration_minutes": "0",
             "perceived_intensity": "11",
+            "recovery_rating": "6",
+            "sleep_hours": "18",
             "source": "spreadsheet",
             "notes": "Invalid workout",
         },
@@ -99,6 +105,8 @@ def test_workout_validation_rejects_bad_input(client):
     assert b"Workout date is required." in response.data
     assert b"Duration must be between 1 and 600 minutes." in response.data
     assert b"Effort must be between 1 and 10." in response.data
+    assert b"Recovery must be between 1 and 5." in response.data
+    assert b"Sleep must be between 0 and 16 hours." in response.data
     assert b"Source must be manual, app, device, or blank." in response.data
 
     workout = db.fetch_one("SELECT * FROM workout_sessions WHERE notes = ?", ("Invalid workout",))

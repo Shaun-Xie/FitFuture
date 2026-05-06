@@ -8,7 +8,7 @@ from .auth import get_current_user_id, login_required
 from .db import fetch_all, fetch_one, get_db
 from .goals import get_user_goals, save_user_goals
 from .users import get_user_profile
-from .utils import parse_optional_int, parse_optional_text
+from .utils import parse_optional_float, parse_optional_int, parse_optional_text
 from .validation import validate_goals_form, validate_profile_form, validate_workout_form
 
 workouts_bp = Blueprint("workouts", __name__)
@@ -87,6 +87,8 @@ def build_workout_values(form: Any, user_id: int) -> tuple[Any, ...]:
         parse_optional_text(form.get("end_time")),
         parse_optional_int(form.get("total_duration_minutes")),
         parse_optional_int(form.get("perceived_intensity")),
+        parse_optional_int(form.get("recovery_rating")),
+        parse_optional_float(form.get("sleep_hours")),
         parse_optional_text(form.get("source")),
         parse_optional_text(form.get("notes")),
     )
@@ -155,8 +157,9 @@ def create_workout() -> Any:
             """
             INSERT INTO workout_sessions
             (user_id, workout_date, start_time, end_time,
-             total_duration_minutes, perceived_intensity, source, notes)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+             total_duration_minutes, perceived_intensity, recovery_rating,
+             sleep_hours, source, notes)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             build_workout_values(values, user_id),
         )
@@ -200,7 +203,7 @@ def update_workout(workout_id: int) -> Any:
             UPDATE workout_sessions
             SET user_id = ?, workout_date = ?, start_time = ?, end_time = ?,
                 total_duration_minutes = ?, perceived_intensity = ?,
-                source = ?, notes = ?
+                recovery_rating = ?, sleep_hours = ?, source = ?, notes = ?
             WHERE workout_id = ? AND user_id = ?
             """,
             build_workout_values(values, user_id) + (workout_id, user_id),

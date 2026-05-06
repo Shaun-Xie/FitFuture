@@ -18,6 +18,20 @@ def parse_optional_int(value: Any) -> int | None:
         return None
 
 
+def parse_optional_float(value: Any) -> float | None:
+    if value is None:
+        return None
+
+    text = str(value).strip()
+    if not text:
+        return None
+
+    try:
+        return float(text)
+    except ValueError:
+        return None
+
+
 def parse_optional_text(value: Any) -> str | None:
     if value is None:
         return None

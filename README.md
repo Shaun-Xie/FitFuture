@@ -18,13 +18,14 @@ The app includes a demo user for quick exploration, while registration allows ne
 - Server-side form validation with user-facing error and success states.
 - Weekly goal setting for training minutes and session count.
 - Personal-record cards for longest session, peak effort, best week, streak, and total sessions.
-- Workout session logging with date, time, duration, perceived intensity, source, and notes.
+- Workout session logging with date, time, duration, perceived intensity, recovery rating, sleep hours, source, and notes.
 - Editable user profile for age and gender based cohort comparisons.
 - Filterable workout ledger with dashboard metrics for volume, session count, duration, and intensity.
 - 30-day fitness summary with weekly training volume, average session duration, and simple score projection.
 - 8-week training trend analysis with weekly minutes, sessions, active days, best week, and consistency rate.
 - Intensity-zone breakdown across recovery, base, hard, and peak training sessions.
-- Recommendation cards that adapt to recent volume, intensity, and consistency.
+- Recovery readiness analytics based on logged recovery scores, sleep hours, and high-effort risk flags.
+- Recommendation cards that adapt to recent volume, intensity, consistency, and recovery signals.
 - Population comparisons using public Kaggle datasets.
 - Responsive dark fitness-dashboard UI built with Flask templates, CSS, and Chart.js.
 
@@ -65,7 +66,8 @@ FitFuture/
 ├── tests/
 │   ├── conftest.py
 │   ├── test_analytics.py
-│   └── test_auth_workouts.py
+│   ├── test_auth_workouts.py
+│   └── test_migrations.py
 ├── requirements.txt
 ├── gym_members_exercise_tracking.csv
 ├── health_fitness_tracking_365days.csv
@@ -84,7 +86,7 @@ FitFuture/
 3. `workouts.py`
    Owns workout CRUD routes, filtering, dashboard metrics, and profile update behavior.
 4. `analytics.py`
-   Computes 30-day summaries, cohort percentiles, 8-week trends, intensity zones, and recommendations.
+   Computes 30-day summaries, cohort percentiles, 8-week trends, intensity zones, recovery readiness, and recommendations.
 5. `analytics_routes.py`
    Renders the analytics dashboard using the analytics service layer.
 6. `datasets.py`
@@ -136,6 +138,7 @@ The test suite uses isolated temporary SQLite databases, so route and analytics 
 - Includes session authentication and user-scoped CRUD behavior.
 - Handles invalid form submissions with clear inline errors and success feedback.
 - Adds user-configurable goals and personal-record calculations for product depth.
+- Adds recovery and sleep tracking that feeds readiness-aware coaching.
 - Shows practical data work with multiple large CSV datasets and cached pandas summaries.
 - Uses custom analytics logic instead of static placeholder charts.
 - Includes pytest coverage for auth, protected routes, validation, goals, workout ownership, migrations, and analytics helpers.
@@ -145,7 +148,7 @@ The test suite uses isolated temporary SQLite databases, so route and analytics 
 ## Roadmap
 
 - Add SQLAlchemy or a richer repository layer if the schema grows.
-- Add richer streak history and recovery tracking.
+- Add richer streak history and periodized training blocks.
 - Deploy the app with production config and a public demo URL.
 
 ## Dataset citations

@@ -128,6 +128,7 @@
                     <th>Session</th>
                     <th>Duration</th>
                     <th>Intensity</th>
+                    <th>Recovery</th>
                     <th>Source</th>
                     <th>Notes</th>
                     <th class="actions-heading">Actions</th>
@@ -181,6 +182,20 @@
                             {% endif %}
                         </td>
                         <td>
+                            {% if w.recovery_rating is not none or w.sleep_hours is not none %}
+                                <div class="recovery-stack">
+                                    {% if w.recovery_rating is not none %}
+                                        <span class="recovery-chip">{{ w.recovery_rating }}/5 ready</span>
+                                    {% endif %}
+                                    {% if w.sleep_hours is not none %}
+                                        <span>{{ w.sleep_hours|round(1) }}h sleep</span>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <span class="muted">--</span>
+                            {% endif %}
+                        </td>
+                        <td>
                             {% if w.source %}
                                 <span class="chip-src">
                                     <span class="chip-src-dot"></span>{{ w.source }}
@@ -219,7 +234,7 @@
                 {% endfor %}
                 {% if workouts|length == 0 %}
                     <tr>
-                        <td colspan="7" class="empty-row">
+                        <td colspan="8" class="empty-row">
                             No workouts match this view.
                         </td>
                     </tr>
@@ -392,6 +407,34 @@
                             max="10"
                             placeholder="1-10"
                             value="{{ (workout_form.perceived_intensity if workout_form else '') or '' }}"
+                        >
+                    </div>
+                </div>
+
+                <div class="field-row">
+                    <div class="field">
+                        <label for="recovery_rating">Recovery</label>
+                        <input
+                            type="number"
+                            id="recovery_rating"
+                            name="recovery_rating"
+                            min="1"
+                            max="5"
+                            placeholder="1-5"
+                            value="{{ workout_form.recovery_rating if workout_form and workout_form.recovery_rating is not none else '' }}"
+                        >
+                    </div>
+                    <div class="field">
+                        <label for="sleep_hours">Sleep</label>
+                        <input
+                            type="number"
+                            id="sleep_hours"
+                            name="sleep_hours"
+                            min="0"
+                            max="16"
+                            step="0.1"
+                            placeholder="Hours"
+                            value="{{ workout_form.sleep_hours if workout_form and workout_form.sleep_hours is not none else '' }}"
                         >
                     </div>
                 </div>

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from .utils import parse_optional_int, parse_optional_text
+from .utils import parse_optional_float, parse_optional_int, parse_optional_text
 
 ALLOWED_SOURCES = {"", "manual", "app", "device"}
 ALLOWED_GENDERS = {"", "M", "F"}
@@ -37,6 +37,8 @@ def validate_workout_form(form: Any) -> tuple[dict[str, Any], list[str]]:
         "end_time": parse_optional_text(form.get("end_time")),
         "total_duration_minutes": parse_optional_int(form.get("total_duration_minutes")),
         "perceived_intensity": parse_optional_int(form.get("perceived_intensity")),
+        "recovery_rating": parse_optional_int(form.get("recovery_rating")),
+        "sleep_hours": parse_optional_float(form.get("sleep_hours")),
         "source": parse_optional_text(form.get("source")) or "",
         "notes": parse_optional_text(form.get("notes")),
     }
@@ -59,6 +61,14 @@ def validate_workout_form(form: Any) -> tuple[dict[str, Any], list[str]]:
     intensity = values["perceived_intensity"]
     if intensity is not None and not 1 <= intensity <= 10:
         errors.append("Effort must be between 1 and 10.")
+
+    recovery = values["recovery_rating"]
+    if recovery is not None and not 1 <= recovery <= 5:
+        errors.append("Recovery must be between 1 and 5.")
+
+    sleep_hours = values["sleep_hours"]
+    if sleep_hours is not None and not 0 <= sleep_hours <= 16:
+        errors.append("Sleep must be between 0 and 16 hours.")
 
     if values["source"] not in ALLOWED_SOURCES:
         errors.append("Source must be manual, app, device, or blank.")

@@ -28,7 +28,12 @@ def fetch_recent_user_workouts(
 
     return fetch_all(
         """
-        SELECT workout_date, total_duration_minutes, perceived_intensity
+        SELECT
+            workout_date,
+            total_duration_minutes,
+            perceived_intensity,
+            recovery_rating,
+            sleep_hours
         FROM workout_sessions
         WHERE user_id = ? AND workout_date >= ?
         ORDER BY workout_date ASC, workout_id ASC
@@ -44,7 +49,12 @@ def compute_fitness_summary(user_id: int = config.DEFAULT_USER_ID) -> dict[str, 
     window_start = (date.today() - timedelta(days=config.ANALYTICS_WINDOW_DAYS)).isoformat()
     rows = fetch_all(
         """
-        SELECT workout_date, total_duration_minutes, perceived_intensity
+        SELECT
+            workout_date,
+            total_duration_minutes,
+            perceived_intensity,
+            recovery_rating,
+            sleep_hours
         FROM workout_sessions
         WHERE user_id = ? AND workout_date >= ? AND total_duration_minutes IS NOT NULL
         """,
@@ -57,6 +67,16 @@ def compute_fitness_summary(user_id: int = config.DEFAULT_USER_ID) -> dict[str, 
             row["perceived_intensity"]
             for row in rows
             if row.get("perceived_intensity") is not None
+        ]
+        recovery_ratings = [
+            row["recovery_rating"]
+            for row in rows
+            if row.get("recovery_rating") is not None
+        ]
+        sleep_values = [
+            row["sleep_hours"]
+            for row in rows
+            if row.get("sleep_hours") is not None
         ]
         total_minutes = sum(durations)
         average_duration = total_minutes / len(durations)
@@ -82,6 +102,10 @@ def compute_fitness_summary(user_id: int = config.DEFAULT_USER_ID) -> dict[str, 
             total_minutes_30d=total_minutes,
             avg_duration=average_duration,
             avg_intensity=sum(intensities) / len(intensities) if intensities else None,
+            avg_recovery_rating=(
+                sum(recovery_ratings) / len(recovery_ratings) if recovery_ratings else None
+            ),
+            avg_sleep_hours=sum(sleep_values) / len(sleep_values) if sleep_values else None,
             weekly_minutes=weekly_minutes,
             current_score=current_score,
             projected_score=projected_score,
@@ -146,8 +170,11 @@ def build_training_recommendations(
     recommendations: list[dict[str, str]] = []
     weekly_minutes = float(fitness_summary.get("weekly_minutes") or 0)
     avg_intensity = fitness_summary.get("avg_intensity")
+    avg_recovery_rating = training_insights.get("avg_recovery_rating")
+    avg_sleep_hours = training_insights.get("avg_sleep_hours")
     consistency_rate = float(training_insights.get("consistency_rate") or 0)
     active_week_streak = int(training_insights.get("active_week_streak") or 0)
+    strain_risk_sessions = int(training_insights.get("strain_risk_sessions") or 0)
 
     if weekly_minutes < 90:
         recommendations.append(
@@ -172,6 +199,25 @@ def build_training_recommendations(
                 "label": "Volume",
                 "title": "Maintain your current training load",
                 "body": "Your recent volume is above the baseline target. Keep progression gradual.",
+            }
+        )
+
+    if avg_recovery_rating is not None and (
+        avg_recovery_rating <= 2.5 or strain_risk_sessions >= 2
+    ):
+        recommendations.append(
+            {
+                "label": "Readiness",
+                "title": "Protect the next hard session",
+                "body": "Recovery is trending low, so bias the next session toward mobility, sleep, or easy aerobic work.",
+            }
+        )
+    elif avg_sleep_hours is not None and avg_sleep_hours < 6.5:
+        recommendations.append(
+            {
+                "label": "Sleep",
+                "title": "Raise the recovery floor",
+                "body": "Your logged sleep is light. A steadier bedtime can improve readiness before adding intensity.",
             }
         )
 
@@ -240,6 +286,11 @@ def build_training_insights(user_id: int = config.DEFAULT_USER_ID) -> dict[str, 
         "Peak": 0,
     }
     workout_days: set[date] = set()
+    recovery_total = 0
+    recovery_count = 0
+    sleep_total = 0.0
+    sleep_count = 0
+    strain_risk_sessions = 0
 
     for row in rows:
         workout_day = parse_workout_date(row["workout_date"])
@@ -256,6 +307,16 @@ def build_training_insights(user_id: int = config.DEFAULT_USER_ID) -> dict[str, 
                 weekly_buckets[week_start]["intensity_total"] += row["perceived_intensity"]
                 weekly_buckets[week_start]["intensity_count"] += 1
 
+        recovery_rating = row.get("recovery_rating")
+        if recovery_rating is not None:
+            recovery_total += recovery_rating
+            recovery_count += 1
+
+        sleep_hours = row.get("sleep_hours")
+        if sleep_hours is not None:
+            sleep_total += sleep_hours
+            sleep_count += 1
+
         intensity = row.get("perceived_intensity")
         if intensity is None:
             continue
@@ -267,6 +328,9 @@ def build_training_insights(user_id: int = config.DEFAULT_USER_ID) -> dict[str, 
             intensity_zones["Hard"] += 1
         else:
             intensity_zones["Peak"] += 1
+
+        if recovery_rating is not None and intensity >= 8 and recovery_rating <= 2:
+            strain_risk_sessions += 1
 
     weeks = list(weekly_buckets.values())
     active_weeks = {
@@ -302,6 +366,11 @@ def build_training_insights(user_id: int = config.DEFAULT_USER_ID) -> dict[str, 
         "active_days": len(workout_days),
         "best_week_minutes": best_week["minutes"] if best_week else 0,
         "best_week_label": best_week["label"] if best_week else None,
+        "avg_recovery_rating": recovery_total / recovery_count if recovery_count else None,
+        "avg_sleep_hours": sleep_total / sleep_count if sleep_count else None,
+        "recovery_samples": recovery_count,
+        "sleep_samples": sleep_count,
+        "strain_risk_sessions": strain_risk_sessions,
         "target_weekly_minutes": config.WEEKLY_VOLUME_TARGET_MINUTES,
     }
 

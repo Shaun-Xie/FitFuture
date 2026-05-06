@@ -745,7 +745,7 @@ form {
 
 table {
     width: 100%;
-    min-width: 780px;
+    min-width: 900px;
     border-collapse: collapse;
     font-size: 0.86rem;
 }
@@ -795,11 +795,17 @@ tbody tr:last-child td {
     gap: 3px;
 }
 
+.recovery-stack {
+    display: grid;
+    gap: 4px;
+}
+
 .date-stack strong {
     color: var(--text-main);
 }
 
 .date-stack span,
+.recovery-stack span,
 .notes-cell,
 .empty-row {
     font-size: 0.8rem;
@@ -811,6 +817,7 @@ tbody tr:last-child td {
 }
 
 .duration-chip,
+.recovery-chip,
 .badge-intensity,
 .chip-src,
 .pill-small {
@@ -826,6 +833,14 @@ tbody tr:last-child td {
     color: #bcfff7;
     font-size: 0.78rem;
     font-weight: 800;
+}
+
+.recovery-chip {
+    padding: 5px 9px;
+    background: rgba(53, 208, 127, 0.1);
+    color: #c9ffdd;
+    font-size: 0.78rem;
+    font-weight: 850;
 }
 
 .badge-intensity {
