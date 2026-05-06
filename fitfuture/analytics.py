@@ -152,6 +152,7 @@ def compute_fitness_summary(user_id: int = config.DEFAULT_USER_ID) -> dict[str, 
 def build_training_recommendations(
     fitness_summary: dict[str, Any],
     training_insights: dict[str, Any],
+    training_block_progress: dict[str, Any] | None = None,
 ) -> list[dict[str, str]]:
     if not fitness_summary.get("has_data"):
         return [
@@ -168,6 +169,16 @@ def build_training_recommendations(
         ]
 
     recommendations: list[dict[str, str]] = []
+    training_block_progress = training_block_progress or {}
+    weekly_target = float(
+        training_block_progress.get("target_weekly_minutes")
+        or config.WEEKLY_VOLUME_TARGET_MINUTES
+    )
+    target_label = (
+        "block target"
+        if training_block_progress.get("has_block")
+        else "150-minute benchmark"
+    )
     weekly_minutes = float(fitness_summary.get("weekly_minutes") or 0)
     avg_intensity = fitness_summary.get("avg_intensity")
     avg_recovery_rating = training_insights.get("avg_recovery_rating")
@@ -184,13 +195,13 @@ def build_training_recommendations(
                 "body": "Aim for two or three 35-minute sessions before adding more intensity.",
             }
         )
-    elif weekly_minutes < config.WEEKLY_VOLUME_TARGET_MINUTES:
-        remaining = round(config.WEEKLY_VOLUME_TARGET_MINUTES - weekly_minutes)
+    elif weekly_minutes < weekly_target:
+        remaining = round(weekly_target - weekly_minutes)
         recommendations.append(
             {
                 "label": "Volume",
                 "title": f"Close a {remaining}-minute weekly gap",
-                "body": "One short conditioning session can move you closer to the 150-minute benchmark.",
+                "body": f"One short conditioning session can move you closer to the {target_label}.",
             }
         )
     else:
@@ -198,7 +209,32 @@ def build_training_recommendations(
             {
                 "label": "Volume",
                 "title": "Maintain your current training load",
-                "body": "Your recent volume is above the baseline target. Keep progression gradual.",
+                "body": f"Your recent volume is above the {target_label}. Keep progression gradual.",
+            }
+        )
+
+    if (
+        training_block_progress.get("status") == "active"
+        and training_block_progress.get("current_week_minutes_percent", 0) < 50
+        and training_block_progress.get("percent_complete", 0) >= 25
+    ):
+        recommendations.append(
+            {
+                "label": "Block Pace",
+                "title": "Bring this week back onto plan",
+                "body": "Your active block is moving faster than your current-week volume. Add a controlled session before intensity.",
+            }
+        )
+    elif (
+        training_block_progress.get("status") == "active"
+        and training_block_progress.get("effort_delta") is not None
+        and training_block_progress["effort_delta"] >= 2
+    ):
+        recommendations.append(
+            {
+                "label": "Block Effort",
+                "title": "Keep effort aligned with the phase",
+                "body": "Your current week is running above the block target. Shift one workout down a notch to preserve adaptation.",
             }
         )
 

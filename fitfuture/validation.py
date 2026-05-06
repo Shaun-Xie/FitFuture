@@ -3,7 +3,9 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
+from .blocks import ALLOWED_TRAINING_FOCUSES
 from .utils import parse_optional_float, parse_optional_int, parse_optional_text
+from .utils import parse_workout_date
 
 ALLOWED_SOURCES = {"", "manual", "app", "device"}
 ALLOWED_GENDERS = {"", "M", "F"}
@@ -132,5 +134,65 @@ def validate_goals_form(form: Any) -> tuple[dict[str, Any], list[str]]:
         errors.append("Weekly sessions goal is required.")
     elif not 1 <= values["weekly_sessions_goal"] <= 14:
         errors.append("Weekly sessions goal must be between 1 and 14.")
+
+    return values, errors
+
+
+def validate_training_block_form(form: Any) -> tuple[dict[str, Any], list[str]]:
+    training_focus = (parse_optional_text(form.get("training_focus")) or "").lower()
+    values = {
+        "block_name": parse_optional_text(form.get("block_name")),
+        "training_focus": training_focus,
+        "start_date": parse_optional_text(form.get("start_date")),
+        "end_date": parse_optional_text(form.get("end_date")),
+        "target_weekly_minutes": parse_optional_int(form.get("target_weekly_minutes")),
+        "target_weekly_sessions": parse_optional_int(form.get("target_weekly_sessions")),
+        "target_effort": parse_optional_int(form.get("target_effort")),
+        "notes": parse_optional_text(form.get("notes")),
+    }
+    errors: list[str] = []
+
+    if not values["block_name"]:
+        errors.append("Block name is required.")
+    elif len(values["block_name"]) > 60:
+        errors.append("Block name must stay under 60 characters.")
+
+    if values["training_focus"] not in ALLOWED_TRAINING_FOCUSES:
+        errors.append("Training focus must be one of the available options.")
+
+    start_date = parse_workout_date(values["start_date"])
+    end_date = parse_workout_date(values["end_date"])
+    if not values["start_date"]:
+        errors.append("Block start date is required.")
+    elif start_date is None:
+        errors.append("Block start date must be valid.")
+
+    if not values["end_date"]:
+        errors.append("Block end date is required.")
+    elif end_date is None:
+        errors.append("Block end date must be valid.")
+
+    if start_date and end_date:
+        duration_days = (end_date - start_date).days + 1
+        if duration_days <= 0:
+            errors.append("Block end date must be on or after the start date.")
+        elif duration_days > 183:
+            errors.append("Training blocks must be 26 weeks or shorter.")
+
+    if values["target_weekly_minutes"] is None:
+        errors.append("Block weekly minutes target is required.")
+    elif not 30 <= values["target_weekly_minutes"] <= 900:
+        errors.append("Block weekly minutes target must be between 30 and 900.")
+
+    if values["target_weekly_sessions"] is None:
+        errors.append("Block weekly session target is required.")
+    elif not 1 <= values["target_weekly_sessions"] <= 14:
+        errors.append("Block weekly session target must be between 1 and 14.")
+
+    if values["target_effort"] is not None and not 1 <= values["target_effort"] <= 10:
+        errors.append("Block target effort must be between 1 and 10.")
+
+    if values["notes"] and len(values["notes"]) > 300:
+        errors.append("Block notes must stay under 300 characters.")
 
     return values, errors

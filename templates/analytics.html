@@ -103,6 +103,72 @@
 <section class="panel recommendation-panel">
     <div class="panel-header">
         <div>
+            <p class="section-kicker">Periodization</p>
+            <h2>Current Training Block</h2>
+        </div>
+        {% if training_block_progress.has_block %}
+            <span class="pill">{{ training_block_progress.status_label }}</span>
+        {% else %}
+            <span class="pill">No block set</span>
+        {% endif %}
+    </div>
+    {% if training_block_progress.has_block %}
+        <div class="record-grid">
+            <article class="record-card">
+                <span>{{ training_block_progress.focus_label }}</span>
+                <strong>{{ training_block_progress.block_name }}</strong>
+                <p>{{ training_block_progress.start_date }} to {{ training_block_progress.end_date }}</p>
+            </article>
+            <article class="record-card">
+                <span>Timeline</span>
+                <strong>{{ training_block_progress.percent_complete }}%</strong>
+                <p>
+                    {% if training_block_progress.status == 'planned' %}
+                        Starts in {{ training_block_progress.days_until_start }} days
+                    {% elif training_block_progress.status == 'complete' %}
+                        Block complete
+                    {% else %}
+                        {{ training_block_progress.days_remaining }} days remaining
+                    {% endif %}
+                </p>
+            </article>
+            <article class="record-card">
+                <span>Weekly Pace</span>
+                <strong>{{ training_block_progress.current_week_minutes_percent }}%</strong>
+                <p>
+                    {{ training_block_progress.current_week_minutes }} /
+                    {{ training_block_progress.target_weekly_minutes }} min this week
+                </p>
+            </article>
+            <article class="record-card">
+                <span>Effort Target</span>
+                <strong>
+                    {% if training_block_progress.target_effort %}
+                        {{ training_block_progress.target_effort }}/10
+                    {% else %}
+                        --
+                    {% endif %}
+                </strong>
+                <p>
+                    {% if training_block_progress.current_week_avg_intensity is not none %}
+                        Current week {{ training_block_progress.current_week_avg_intensity|round(1) }}/10
+                    {% else %}
+                        Add effort scores to compare.
+                    {% endif %}
+                </p>
+            </article>
+        </div>
+    {% else %}
+        <div class="empty-panel">
+            <strong>No training block yet.</strong>
+            <span>Create one from the workout dashboard to tie progress to a planned phase.</span>
+        </div>
+    {% endif %}
+</section>
+
+<section class="panel recommendation-panel">
+    <div class="panel-header">
+        <div>
             <p class="section-kicker">Milestones</p>
             <h2>Personal Records</h2>
         </div>

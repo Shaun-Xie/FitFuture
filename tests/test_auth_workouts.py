@@ -158,6 +158,63 @@ def test_goal_validation_rejects_bad_targets(client):
     assert b"Weekly sessions goal must be between 1 and 14." in response.data
 
 
+def test_training_block_update_persists_current_phase(client):
+    register(client, "block@example.com", "password123")
+    user = db.fetch_one("SELECT * FROM users WHERE email = ?", ("block@example.com",))
+
+    response = client.post(
+        "/training-block",
+        data={
+            "block_name": "Base Build",
+            "training_focus": "hybrid",
+            "start_date": "2026-05-04",
+            "end_date": "2026-06-14",
+            "target_weekly_minutes": "240",
+            "target_weekly_sessions": "5",
+            "target_effort": "7",
+            "notes": "Six-week base block",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    block = db.fetch_one(
+        "SELECT * FROM user_training_blocks WHERE user_id = ?",
+        (user["user_id"],),
+    )
+    assert block["block_name"] == "Base Build"
+    assert block["training_focus"] == "hybrid"
+    assert block["target_weekly_minutes"] == 240
+    assert block["target_weekly_sessions"] == 5
+    assert block["target_effort"] == 7
+
+
+def test_training_block_validation_rejects_bad_input(client):
+    register(client, "badblock@example.com", "password123")
+
+    response = client.post(
+        "/training-block",
+        data={
+            "block_name": "",
+            "training_focus": "chaos",
+            "start_date": "2026-08-01",
+            "end_date": "2026-07-01",
+            "target_weekly_minutes": "10",
+            "target_weekly_sessions": "0",
+            "target_effort": "11",
+            "notes": "Invalid block",
+        },
+    )
+
+    assert response.status_code == 400
+    assert b"Block name is required." in response.data
+    assert b"Training focus must be one of the available options." in response.data
+    assert b"Block end date must be on or after the start date." in response.data
+    assert b"Block weekly minutes target must be between 30 and 900." in response.data
+    assert b"Block weekly session target must be between 1 and 14." in response.data
+    assert b"Block target effort must be between 1 and 10." in response.data
+
+
 def test_users_cannot_edit_or_delete_each_others_workouts(client):
     register(client, "owner@example.com", "password123")
     owner = db.fetch_one("SELECT * FROM users WHERE email = ?", ("owner@example.com",))

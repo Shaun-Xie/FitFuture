@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, timedelta
 
 from conftest import register
-from fitfuture import analytics, config, db, goals
+from fitfuture import analytics, blocks, config, db, goals
 
 
 def insert_workout(
@@ -80,6 +80,37 @@ def test_training_insights_builds_trend_and_intensity_zones(client):
     assert insights["strain_risk_sessions"] == 1
 
 
+def test_training_block_progress_uses_current_week_targets(client):
+    register(client, "blockprogress@example.com", "password123")
+    user = db.fetch_one("SELECT * FROM users WHERE email = ?", ("blockprogress@example.com",))
+
+    today = date.today()
+    blocks.save_training_block(
+        user["user_id"],
+        {
+            "block_name": "Power Build",
+            "training_focus": "strength",
+            "start_date": (today - timedelta(days=14)).isoformat(),
+            "end_date": (today + timedelta(days=28)).isoformat(),
+            "target_weekly_minutes": 200,
+            "target_weekly_sessions": 4,
+            "target_effort": 7,
+            "notes": "Testing progress",
+        },
+    )
+    insert_workout(user["user_id"], today, 60, 9, 4, 7)
+
+    insights = analytics.build_training_insights(user["user_id"])
+    block = blocks.get_training_block(user["user_id"])
+    progress = blocks.build_training_block_progress(block, insights, today=today)
+
+    assert progress["status"] == "active"
+    assert progress["focus_label"] == "Strength"
+    assert progress["current_week_minutes_percent"] == 30
+    assert progress["current_week_sessions_percent"] == 25
+    assert progress["effort_delta"] == 2
+
+
 def test_recommendations_reflect_training_state():
     recommendations = analytics.build_training_recommendations(
         {
@@ -114,6 +145,33 @@ def test_recommendations_use_recovery_readiness():
     )
 
     assert recommendations[1]["label"] == "Readiness"
+
+
+def test_recommendations_use_training_block_pace():
+    recommendations = analytics.build_training_recommendations(
+        {
+            "has_data": True,
+            "weekly_minutes": 160,
+            "avg_intensity": 7,
+        },
+        {
+            "avg_recovery_rating": 4,
+            "avg_sleep_hours": 7,
+            "consistency_rate": 80,
+            "active_week_streak": 1,
+            "strain_risk_sessions": 0,
+        },
+        {
+            "has_block": True,
+            "status": "active",
+            "target_weekly_minutes": 220,
+            "current_week_minutes_percent": 30,
+            "percent_complete": 40,
+        },
+    )
+
+    labels = [recommendation["label"] for recommendation in recommendations]
+    assert labels[:2] == ["Volume", "Block Pace"]
 
 
 def test_goal_progress_and_personal_records(client):

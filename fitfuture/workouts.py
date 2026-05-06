@@ -5,11 +5,22 @@ from typing import Any
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 
 from .auth import get_current_user_id, login_required
+from .blocks import (
+    TRAINING_FOCUS_OPTIONS,
+    build_training_block_progress,
+    get_training_block,
+    save_training_block,
+)
 from .db import fetch_all, fetch_one, get_db
 from .goals import get_user_goals, save_user_goals
 from .users import get_user_profile
 from .utils import parse_optional_float, parse_optional_int, parse_optional_text
-from .validation import validate_goals_form, validate_profile_form, validate_workout_form
+from .validation import (
+    validate_goals_form,
+    validate_profile_form,
+    validate_training_block_form,
+    validate_workout_form,
+)
 
 workouts_bp = Blueprint("workouts", __name__)
 
@@ -102,12 +113,16 @@ def render_workouts_page(
     profile_errors: list[str] | None = None,
     goal_form: dict[str, Any] | None = None,
     goal_errors: list[str] | None = None,
+    block_form: dict[str, Any] | None = None,
+    block_errors: list[str] | None = None,
 ) -> str:
     user_id = get_current_user_id()
     filters = get_workout_filters()
     workouts = fetch_workouts(user_id, filters)
     profile = get_user_profile(user_id)
     goals = get_user_goals(user_id)
+    training_block = get_training_block(user_id)
+    training_block_progress = build_training_block_progress(training_block)
 
     return render_template(
         "workouts.html",
@@ -122,6 +137,11 @@ def render_workouts_page(
         profile_errors=profile_errors or [],
         goal_form=goal_form or goals,
         goal_errors=goal_errors or [],
+        block_form=block_form or training_block or {},
+        block_errors=block_errors or [],
+        training_block=training_block,
+        training_block_progress=training_block_progress,
+        training_focus_options=TRAINING_FOCUS_OPTIONS,
         form_action=(
             url_for("workouts.create_workout")
             if workout is None
@@ -282,4 +302,24 @@ def update_goals() -> Any:
     )
 
     flash("Training goals saved.", "success")
+    return redirect(url_for("workouts.index"))
+
+
+@workouts_bp.route("/training-block", methods=["POST"])
+@login_required
+def update_training_block() -> Any:
+    user_id = get_current_user_id()
+    values, errors = validate_training_block_form(request.form)
+    if errors:
+        return (
+            render_workouts_page(
+                block_form=values,
+                block_errors=errors,
+            ),
+            400,
+        )
+
+    save_training_block(user_id, values)
+
+    flash("Training block saved.", "success")
     return redirect(url_for("workouts.index"))

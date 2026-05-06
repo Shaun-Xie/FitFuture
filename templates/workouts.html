@@ -335,6 +335,129 @@
             </form>
         </section>
 
+        <section class="panel">
+            <div class="panel-header compact">
+                <div>
+                    <p class="section-kicker">Periodization</p>
+                    <h2>Training Block</h2>
+                </div>
+                {% if training_block_progress.has_block %}
+                    <span class="pill">{{ training_block_progress.status_label }}</span>
+                {% endif %}
+            </div>
+            <form method="post" action="{{ url_for('workouts.update_training_block') }}">
+                {% if block_errors %}
+                    <div class="form-alert">
+                        {% for error in block_errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                <div class="field-row">
+                    <div class="field field-full">
+                        <label for="block_name">Block Name</label>
+                        <input
+                            type="text"
+                            id="block_name"
+                            name="block_name"
+                            maxlength="60"
+                            placeholder="Base Build"
+                            value="{{ (block_form.block_name if block_form else '') or '' }}"
+                            required
+                        >
+                    </div>
+                </div>
+                <div class="field-row">
+                    <div class="field">
+                        <label for="training_focus">Focus</label>
+                        <select id="training_focus" name="training_focus" required>
+                            {% set selected_focus = block_form.training_focus if block_form else '' %}
+                            {% for value, label in training_focus_options %}
+                                <option value="{{ value }}" {% if selected_focus == value %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="field">
+                        <label for="target_effort">Effort Target</label>
+                        <input
+                            type="number"
+                            id="target_effort"
+                            name="target_effort"
+                            min="1"
+                            max="10"
+                            placeholder="1-10"
+                            value="{{ block_form.target_effort if block_form and block_form.target_effort is not none else '' }}"
+                        >
+                    </div>
+                </div>
+                <div class="field-row">
+                    <div class="field">
+                        <label for="start_date">Start</label>
+                        <input
+                            type="date"
+                            id="start_date"
+                            name="start_date"
+                            value="{{ (block_form.start_date if block_form else '') or '' }}"
+                            required
+                        >
+                    </div>
+                    <div class="field">
+                        <label for="end_date">End</label>
+                        <input
+                            type="date"
+                            id="end_date"
+                            name="end_date"
+                            value="{{ (block_form.end_date if block_form else '') or '' }}"
+                            required
+                        >
+                    </div>
+                </div>
+                <div class="field-row">
+                    <div class="field">
+                        <label for="target_weekly_minutes">Minutes</label>
+                        <input
+                            type="number"
+                            id="target_weekly_minutes"
+                            name="target_weekly_minutes"
+                            min="30"
+                            max="900"
+                            value="{{ (block_form.target_weekly_minutes if block_form else '') or '' }}"
+                            required
+                        >
+                    </div>
+                    <div class="field">
+                        <label for="target_weekly_sessions">Sessions</label>
+                        <input
+                            type="number"
+                            id="target_weekly_sessions"
+                            name="target_weekly_sessions"
+                            min="1"
+                            max="14"
+                            value="{{ (block_form.target_weekly_sessions if block_form else '') or '' }}"
+                            required
+                        >
+                    </div>
+                </div>
+                <div class="field-row">
+                    <div class="field field-full">
+                        <label for="block_notes">Notes</label>
+                        <textarea
+                            id="block_notes"
+                            name="notes"
+                            rows="2"
+                            maxlength="300"
+                            placeholder="Focus cues, constraints, next test."
+                        >{{ (block_form.notes if block_form else '') or '' }}</textarea>
+                    </div>
+                </div>
+                <div class="btn-row">
+                    <button type="submit" class="btn btn-ghost">Save Block</button>
+                </div>
+            </form>
+        </section>
+
         <section class="panel panel-accent">
             <div class="panel-header compact">
                 <div>
