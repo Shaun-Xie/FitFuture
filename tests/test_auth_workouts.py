@@ -36,6 +36,12 @@ def test_registration_creates_profile_and_session(client):
         (user["user_id"],),
     )
     assert profile is not None
+    goals = db.fetch_one(
+        "SELECT * FROM user_goals WHERE user_id = ?",
+        (user["user_id"],),
+    )
+    assert goals["weekly_minutes_goal"] == 150
+    assert goals["weekly_sessions_goal"] == 3
 
     dashboard = client.get("/")
     assert dashboard.status_code == 200
@@ -110,6 +116,38 @@ def test_profile_validation_rejects_bad_input(client):
     assert response.status_code == 400
     assert b"Age must be between 10 and 90." in response.data
     assert b"Gender must be male, female, or not set." in response.data
+
+
+def test_goal_update_persists_user_targets(client):
+    register(client, "goals@example.com", "password123")
+    user = db.fetch_one("SELECT * FROM users WHERE email = ?", ("goals@example.com",))
+
+    response = client.post(
+        "/goals",
+        data={"weekly_minutes_goal": "210", "weekly_sessions_goal": "5"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    goals = db.fetch_one(
+        "SELECT * FROM user_goals WHERE user_id = ?",
+        (user["user_id"],),
+    )
+    assert goals["weekly_minutes_goal"] == 210
+    assert goals["weekly_sessions_goal"] == 5
+
+
+def test_goal_validation_rejects_bad_targets(client):
+    register(client, "badgoals@example.com", "password123")
+
+    response = client.post(
+        "/goals",
+        data={"weekly_minutes_goal": "10", "weekly_sessions_goal": "20"},
+    )
+
+    assert response.status_code == 400
+    assert b"Weekly minutes goal must be between 30 and 600." in response.data
+    assert b"Weekly sessions goal must be between 1 and 14." in response.data
 
 
 def test_users_cannot_edit_or_delete_each_others_workouts(client):

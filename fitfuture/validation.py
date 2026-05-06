@@ -104,3 +104,23 @@ def validate_auth_form(form: Any, *, require_password_length: bool) -> tuple[dic
         errors.append("Password must be at least 8 characters.")
 
     return values, errors
+
+
+def validate_goals_form(form: Any) -> tuple[dict[str, Any], list[str]]:
+    values = {
+        "weekly_minutes_goal": parse_optional_int(form.get("weekly_minutes_goal")),
+        "weekly_sessions_goal": parse_optional_int(form.get("weekly_sessions_goal")),
+    }
+    errors: list[str] = []
+
+    if values["weekly_minutes_goal"] is None:
+        errors.append("Weekly minutes goal is required.")
+    elif not 30 <= values["weekly_minutes_goal"] <= 600:
+        errors.append("Weekly minutes goal must be between 30 and 600.")
+
+    if values["weekly_sessions_goal"] is None:
+        errors.append("Weekly sessions goal is required.")
+    elif not 1 <= values["weekly_sessions_goal"] <= 14:
+        errors.append("Weekly sessions goal must be between 1 and 14.")
+
+    return values, errors

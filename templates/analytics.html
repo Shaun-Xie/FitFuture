@@ -45,15 +45,13 @@
 
 <section class="metric-grid">
     <article class="metric-tile">
-        <span class="metric-label">Weekly Volume</span>
+        <span class="metric-label">Goal Progress</span>
         <strong>
-            {% if fitness_summary and fitness_summary.has_data %}
-                {{ fitness_summary.weekly_minutes|round(0) }}
-            {% else %}
-                --
-            {% endif %}
+            {{ goal_progress.minutes_percent }}%
         </strong>
-        <span class="metric-note">minutes/week</span>
+        <span class="metric-note">
+            {{ goal_progress.current_week_minutes }} / {{ goal_progress.weekly_minutes_goal }} min
+        </span>
     </article>
     <article class="metric-tile">
         <span class="metric-label">Consistency</span>
@@ -80,6 +78,53 @@
         </strong>
         <span class="metric-note">projection</span>
     </article>
+</section>
+
+<section class="panel recommendation-panel">
+    <div class="panel-header">
+        <div>
+            <p class="section-kicker">Milestones</p>
+            <h2>Personal Records</h2>
+        </div>
+        <span class="pill">{{ personal_records.total_sessions }} total sessions</span>
+    </div>
+    <div class="record-grid">
+        <article class="record-card">
+            <span>Longest Session</span>
+            <strong>
+                {% if personal_records.longest_session_minutes %}
+                    {{ personal_records.longest_session_minutes }} min
+                {% else %}
+                    --
+                {% endif %}
+            </strong>
+            <p>{{ personal_records.longest_session_date or 'Log a duration to set this record.' }}</p>
+        </article>
+        <article class="record-card">
+            <span>Peak Effort</span>
+            <strong>
+                {% if personal_records.highest_effort %}
+                    {{ personal_records.highest_effort }}/10
+                {% else %}
+                    --
+                {% endif %}
+            </strong>
+            <p>{{ personal_records.highest_effort_date or 'Add effort scores to unlock this.' }}</p>
+        </article>
+        <article class="record-card">
+            <span>Best Week</span>
+            <strong>{{ personal_records.best_week_minutes|round(0) }} min</strong>
+            <p>{{ personal_records.active_week_streak }} active-week streak</p>
+        </article>
+        <article class="record-card">
+            <span>Session Goal</span>
+            <strong>{{ goal_progress.sessions_percent }}%</strong>
+            <p>
+                {{ goal_progress.current_week_sessions }} / {{ goal_progress.weekly_sessions_goal }}
+                sessions this week
+            </p>
+        </article>
+    </div>
 </section>
 
 <div class="analytics-layout">

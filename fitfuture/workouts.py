@@ -6,9 +6,10 @@ from flask import Blueprint, abort, flash, redirect, render_template, request, u
 
 from .auth import get_current_user_id, login_required
 from .db import fetch_all, fetch_one, get_db
+from .goals import get_user_goals, save_user_goals
 from .users import get_user_profile
 from .utils import parse_optional_int, parse_optional_text
-from .validation import validate_profile_form, validate_workout_form
+from .validation import validate_goals_form, validate_profile_form, validate_workout_form
 
 workouts_bp = Blueprint("workouts", __name__)
 
@@ -90,17 +91,21 @@ def build_workout_values(form: Any, user_id: int) -> tuple[Any, ...]:
         parse_optional_text(form.get("notes")),
     )
 
+
 def render_workouts_page(
     workout: dict[str, Any] | None = None,
     workout_form: dict[str, Any] | None = None,
     workout_errors: list[str] | None = None,
     profile_form: dict[str, Any] | None = None,
     profile_errors: list[str] | None = None,
+    goal_form: dict[str, Any] | None = None,
+    goal_errors: list[str] | None = None,
 ) -> str:
     user_id = get_current_user_id()
     filters = get_workout_filters()
     workouts = fetch_workouts(user_id, filters)
     profile = get_user_profile(user_id)
+    goals = get_user_goals(user_id)
 
     return render_template(
         "workouts.html",
@@ -113,12 +118,15 @@ def render_workouts_page(
         workout_errors=workout_errors or [],
         profile_form=profile_form or profile or {},
         profile_errors=profile_errors or [],
+        goal_form=goal_form or goals,
+        goal_errors=goal_errors or [],
         form_action=(
             url_for("workouts.create_workout")
             if workout is None
             else url_for("workouts.update_workout", workout_id=workout["workout_id"])
         ),
         profile=profile,
+        goals=goals,
     )
 
 
@@ -247,4 +255,28 @@ def update_profile() -> Any:
         )
 
     flash("Profile saved.", "success")
+    return redirect(url_for("workouts.index"))
+
+
+@workouts_bp.route("/goals", methods=["POST"])
+@login_required
+def update_goals() -> Any:
+    user_id = get_current_user_id()
+    values, errors = validate_goals_form(request.form)
+    if errors:
+        return (
+            render_workouts_page(
+                goal_form=values,
+                goal_errors=errors,
+            ),
+            400,
+        )
+
+    save_user_goals(
+        user_id,
+        values["weekly_minutes_goal"],
+        values["weekly_sessions_goal"],
+    )
+
+    flash("Training goals saved.", "success")
     return redirect(url_for("workouts.index"))

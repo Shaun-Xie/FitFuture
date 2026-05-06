@@ -8,7 +8,10 @@ def test_init_db_records_schema_migration(client):
         "SELECT version, name FROM schema_migrations ORDER BY version"
     )
 
-    assert migrations == [{"version": 1, "name": "initial_schema"}]
+    assert migrations == [
+        {"version": 1, "name": "initial_schema"},
+        {"version": 2, "name": "user_goals"},
+    ]
 
 
 def test_init_db_is_idempotent(client):
@@ -21,5 +24,5 @@ def test_init_db_is_idempotent(client):
         (config.DEMO_USER_EMAIL,),
     )
 
-    assert migration_count["c"] == 1
+    assert migration_count["c"] == 2
     assert demo_user_count["c"] == 1

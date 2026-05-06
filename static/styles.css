@@ -992,13 +992,19 @@ tbody tr:last-child td {
     margin-top: 14px;
 }
 
-.recommendation-grid {
+.recommendation-grid,
+.record-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 12px;
 }
 
-.recommendation-card {
+.record-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.recommendation-card,
+.record-card {
     min-height: 150px;
     padding: 18px;
     border: 1px solid var(--border);
@@ -1008,7 +1014,12 @@ tbody tr:last-child td {
         rgba(255, 255, 255, 0.035);
 }
 
-.recommendation-card span {
+.record-card {
+    min-height: 132px;
+}
+
+.recommendation-card span,
+.record-card span {
     display: inline-flex;
     margin-bottom: 14px;
     padding: 5px 8px;
@@ -1020,14 +1031,20 @@ tbody tr:last-child td {
     text-transform: uppercase;
 }
 
-.recommendation-card strong {
+.recommendation-card strong,
+.record-card strong {
     display: block;
     margin-bottom: 8px;
     color: var(--text-main);
     line-height: 1.22;
 }
 
-.recommendation-card p {
+.record-card strong {
+    font-size: 1.4rem;
+}
+
+.recommendation-card p,
+.record-card p {
     margin-bottom: 0;
     color: var(--text-muted);
     font-size: 0.84rem;
@@ -1102,7 +1119,8 @@ tbody tr:last-child td {
 
     .metric-grid,
     .insight-grid,
-    .recommendation-grid {
+    .recommendation-grid,
+    .record-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
 }
@@ -1166,6 +1184,7 @@ tbody tr:last-child td {
     .metric-grid,
     .insight-grid,
     .recommendation-grid,
+    .record-grid,
     .chart-grid {
         grid-template-columns: 1fr;
     }

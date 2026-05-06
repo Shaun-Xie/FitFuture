@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, timedelta
 
 from conftest import register
-from fitfuture import analytics, config, db
+from fitfuture import analytics, config, db, goals
 
 
 def insert_workout(
@@ -85,3 +85,25 @@ def test_recommendations_reflect_training_state():
 
     labels = [recommendation["label"] for recommendation in recommendations]
     assert labels == ["Volume", "Recovery", "Consistency"]
+
+
+def test_goal_progress_and_personal_records(client):
+    register(client, "records@example.com", "password123")
+    user = db.fetch_one("SELECT * FROM users WHERE email = ?", ("records@example.com",))
+    user_goals = goals.get_user_goals(user["user_id"])
+
+    today = date.today()
+    insert_workout(user["user_id"], today - timedelta(days=1), 45, 6)
+    insert_workout(user["user_id"], today, 75, 9)
+
+    insights = analytics.build_training_insights(user["user_id"])
+    progress = goals.build_goal_progress(user_goals, insights)
+    records = goals.build_personal_records(user["user_id"], insights)
+
+    assert progress["current_week_minutes"] == 120
+    assert progress["current_week_sessions"] == 2
+    assert progress["minutes_percent"] == 80
+    assert progress["sessions_percent"] == 67
+    assert records["longest_session_minutes"] == 75
+    assert records["highest_effort"] == 9
+    assert records["total_sessions"] == 2

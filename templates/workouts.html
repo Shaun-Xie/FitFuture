@@ -273,6 +273,53 @@
             </form>
         </section>
 
+        <section class="panel">
+            <div class="panel-header compact">
+                <div>
+                    <p class="section-kicker">Goals</p>
+                    <h2>Weekly Targets</h2>
+                </div>
+            </div>
+            <form method="post" action="{{ url_for('workouts.update_goals') }}">
+                {% if goal_errors %}
+                    <div class="form-alert">
+                        {% for error in goal_errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                <div class="field-row">
+                    <div class="field">
+                        <label for="weekly_minutes_goal">Minutes</label>
+                        <input
+                            type="number"
+                            id="weekly_minutes_goal"
+                            name="weekly_minutes_goal"
+                            min="30"
+                            max="600"
+                            value="{{ (goal_form.weekly_minutes_goal if goal_form else '') or '' }}"
+                            required
+                        >
+                    </div>
+                    <div class="field">
+                        <label for="weekly_sessions_goal">Sessions</label>
+                        <input
+                            type="number"
+                            id="weekly_sessions_goal"
+                            name="weekly_sessions_goal"
+                            min="1"
+                            max="14"
+                            value="{{ (goal_form.weekly_sessions_goal if goal_form else '') or '' }}"
+                            required
+                        >
+                    </div>
+                </div>
+                <div class="btn-row">
+                    <button type="submit" class="btn btn-ghost">Save Goals</button>
+                </div>
+            </form>
+        </section>
+
         <section class="panel panel-accent">
             <div class="panel-header compact">
                 <div>

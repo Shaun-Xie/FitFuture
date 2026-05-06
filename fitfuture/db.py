@@ -17,10 +17,14 @@ def get_db() -> sqlite3.Connection:
     return conn
 
 
+def dict_or_none(row: sqlite3.Row | None) -> dict[str, Any] | None:
+    return dict(row) if row else None
+
+
 def fetch_one(query: str, params: tuple[Any, ...] = ()) -> dict[str, Any] | None:
     with get_db() as conn:
         row = conn.execute(query, params).fetchone()
-    return dict(row) if row else None
+    return dict_or_none(row)
 
 
 def fetch_all(
@@ -78,8 +82,23 @@ def migration_001_initial_schema(cursor: sqlite3.Cursor) -> None:
     )
 
 
+def migration_002_user_goals(cursor: sqlite3.Cursor) -> None:
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS user_goals (
+            user_id INTEGER PRIMARY KEY,
+            weekly_minutes_goal INTEGER NOT NULL DEFAULT 150,
+            weekly_sessions_goal INTEGER NOT NULL DEFAULT 3,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(user_id)
+        );
+        """
+    )
+
+
 MIGRATIONS = (
     (1, "initial_schema", migration_001_initial_schema),
+    (2, "user_goals", migration_002_user_goals),
 )
 
 
@@ -160,9 +179,31 @@ def ensure_default_profile(
         )
 
 
+def ensure_default_goals(
+    cursor: sqlite3.Cursor,
+    user_id: int = config.DEFAULT_USER_ID,
+) -> None:
+    cursor.execute("SELECT COUNT(*) AS c FROM user_goals WHERE user_id = ?", (user_id,))
+    if cursor.fetchone()["c"] == 0:
+        cursor.execute(
+            """
+            INSERT INTO user_goals
+            (user_id, weekly_minutes_goal, weekly_sessions_goal, updated_at)
+            VALUES (?, ?, ?, ?)
+            """,
+            (
+                user_id,
+                config.DEFAULT_WEEKLY_MINUTES_GOAL,
+                config.DEFAULT_WEEKLY_SESSIONS_GOAL,
+                datetime.utcnow().isoformat(),
+            ),
+        )
+
+
 def init_db() -> None:
     with get_db() as conn:
         cur = conn.cursor()
         run_migrations(cur)
         default_user_id = ensure_default_user(cur)
         ensure_default_profile(cur, default_user_id)
+        ensure_default_goals(cur, default_user_id)

@@ -9,7 +9,7 @@ from flask import Blueprint, abort, flash, redirect, render_template, request, s
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from . import config
-from .db import ensure_default_profile, fetch_one, get_db
+from .db import ensure_default_goals, ensure_default_profile, fetch_one, get_db
 from .validation import validate_auth_form
 
 auth_bp = Blueprint("auth", __name__)
@@ -112,6 +112,7 @@ def register() -> Any:
                     )
                     user_id = int(cur.lastrowid)
                     ensure_default_profile(cur, user_id)
+                    ensure_default_goals(cur, user_id)
             except sqlite3.IntegrityError:
                 errors.append("An account with that email already exists.")
             else:
