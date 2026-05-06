@@ -14,6 +14,7 @@ The app includes a demo user for quick exploration, while registration allows ne
 
 - Login, logout, and registration with password hashing.
 - Per-user workout ownership enforced on protected routes.
+- Versioned SQLite migrations tracked in a `schema_migrations` table.
 - Workout session logging with date, time, duration, perceived intensity, source, and notes.
 - Editable user profile for age and gender based cohort comparisons.
 - Filterable workout ledger with dashboard metrics for volume, session count, duration, and intensity.
@@ -84,7 +85,7 @@ FitFuture/
 6. `datasets.py`
    Loads only the needed CSV columns and caches population summary stats.
 7. `db.py`
-   Creates SQLite tables, seeds the demo account, and exposes small query helpers.
+   Runs versioned SQLite migrations, seeds the demo account, and exposes small query helpers.
 8. `config.py`, `users.py`, and `utils.py`
    Keep constants, profile lookup, parsing, and date utilities separated from route code.
 
@@ -122,6 +123,7 @@ The test suite uses isolated temporary SQLite databases, so route and analytics 
 
 - Demonstrates full-stack Flask development without hiding the backend behind a framework generator.
 - Uses an app factory, Flask Blueprints, and separated service/data modules.
+- Adds migration-backed SQLite persistence without introducing unnecessary framework weight.
 - Includes session authentication and user-scoped CRUD behavior.
 - Shows practical data work with multiple large CSV datasets and cached pandas summaries.
 - Uses custom analytics logic instead of static placeholder charts.
@@ -131,7 +133,7 @@ The test suite uses isolated temporary SQLite databases, so route and analytics 
 
 ## Roadmap
 
-- Add SQLAlchemy or migration-backed persistence.
+- Add SQLAlchemy or a richer repository layer if the schema grows.
 - Add form validation and user-facing error states.
 - Add goal setting, personal records, streak history, and recovery tracking.
 - Deploy the app with production config and a public demo URL.

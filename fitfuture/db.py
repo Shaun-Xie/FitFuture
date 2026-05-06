@@ -32,6 +32,90 @@ def fetch_all(
     return [dict(row) for row in rows]
 
 
+def migration_001_initial_schema(cursor: sqlite3.Cursor) -> None:
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS users (
+            user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            email TEXT NOT NULL UNIQUE,
+            password_hash TEXT,
+            created_at TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'ACTIVE'
+        );
+        """
+    )
+
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS user_profiles (
+            user_id INTEGER PRIMARY KEY,
+            age INTEGER,
+            gender TEXT,
+            height_cm REAL,
+            weight_kg REAL,
+            bmi REAL,
+            resting_heart_rate REAL,
+            FOREIGN KEY (user_id) REFERENCES users(user_id)
+        );
+        """
+    )
+
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS workout_sessions (
+            workout_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            workout_date TEXT NOT NULL,
+            start_time TEXT,
+            end_time TEXT,
+            total_duration_minutes INTEGER,
+            perceived_intensity INTEGER,
+            source TEXT,
+            notes TEXT,
+            FOREIGN KEY (user_id) REFERENCES users(user_id)
+        );
+        """
+    )
+
+
+MIGRATIONS = (
+    (1, "initial_schema", migration_001_initial_schema),
+)
+
+
+def ensure_migrations_table(cursor: sqlite3.Cursor) -> None:
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS schema_migrations (
+            version INTEGER PRIMARY KEY,
+            name TEXT NOT NULL,
+            applied_at TEXT NOT NULL
+        );
+        """
+    )
+
+
+def run_migrations(cursor: sqlite3.Cursor) -> None:
+    ensure_migrations_table(cursor)
+    applied_versions = {
+        row["version"]
+        for row in cursor.execute("SELECT version FROM schema_migrations").fetchall()
+    }
+
+    for version, name, migration in MIGRATIONS:
+        if version in applied_versions:
+            continue
+
+        migration(cursor)
+        cursor.execute(
+            """
+            INSERT INTO schema_migrations (version, name, applied_at)
+            VALUES (?, ?, ?)
+            """,
+            (version, name, datetime.utcnow().isoformat()),
+        )
+
+
 def ensure_default_user(cursor: sqlite3.Cursor) -> int:
     cursor.execute("SELECT * FROM users WHERE email = ?", (config.DEMO_USER_EMAIL,))
     user = cursor.fetchone()
@@ -79,50 +163,6 @@ def ensure_default_profile(
 def init_db() -> None:
     with get_db() as conn:
         cur = conn.cursor()
-
-        cur.execute(
-            """
-            CREATE TABLE IF NOT EXISTS users (
-                user_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                email TEXT NOT NULL UNIQUE,
-                password_hash TEXT,
-                created_at TEXT NOT NULL,
-                status TEXT NOT NULL DEFAULT 'ACTIVE'
-            );
-            """
-        )
-
-        cur.execute(
-            """
-            CREATE TABLE IF NOT EXISTS user_profiles (
-                user_id INTEGER PRIMARY KEY,
-                age INTEGER,
-                gender TEXT,
-                height_cm REAL,
-                weight_kg REAL,
-                bmi REAL,
-                resting_heart_rate REAL,
-                FOREIGN KEY (user_id) REFERENCES users(user_id)
-            );
-            """
-        )
-
-        cur.execute(
-            """
-            CREATE TABLE IF NOT EXISTS workout_sessions (
-                workout_id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER NOT NULL,
-                workout_date TEXT NOT NULL,
-                start_time TEXT,
-                end_time TEXT,
-                total_duration_minutes INTEGER,
-                perceived_intensity INTEGER,
-                source TEXT,
-                notes TEXT,
-                FOREIGN KEY (user_id) REFERENCES users(user_id)
-            );
-            """
-        )
-
+        run_migrations(cur)
         default_user_id = ensure_default_user(cur)
         ensure_default_profile(cur, default_user_id)
