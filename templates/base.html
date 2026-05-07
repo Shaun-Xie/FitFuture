@@ -45,10 +45,17 @@
                     Workouts
                 </a>
                 <a
+                    href="{{ url_for('workouts.plan') }}"
+                    class="nav-tab {% if active_view == 'plan' %}nav-tab-active{% endif %}"
+                >
+                    <span class="nav-icon">02</span>
+                    Plan
+                </a>
+                <a
                     href="{{ url_for('analytics.dashboard') }}"
                     class="nav-tab {% if active_view == 'analytics' %}nav-tab-active{% endif %}"
                 >
-                    <span class="nav-icon">02</span>
+                    <span class="nav-icon">03</span>
                     Analytics
                 </a>
             {% else %}

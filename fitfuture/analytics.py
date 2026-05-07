@@ -294,6 +294,34 @@ def build_training_recommendations(
     return recommendations[:3]
 
 
+def build_day_streaks(workout_days: set[date], today: date) -> dict[str, int]:
+    if not workout_days:
+        return {"active_day_streak": 0, "longest_day_streak": 0}
+
+    anchor_day = today if today in workout_days else today - timedelta(days=1)
+    active_day_streak = 0
+    while anchor_day in workout_days:
+        active_day_streak += 1
+        anchor_day -= timedelta(days=1)
+
+    longest_day_streak = 0
+    current_streak = 0
+    previous_day: date | None = None
+    for workout_day in sorted(workout_days):
+        if previous_day is not None and workout_day == previous_day + timedelta(days=1):
+            current_streak += 1
+        else:
+            current_streak = 1
+
+        longest_day_streak = max(longest_day_streak, current_streak)
+        previous_day = workout_day
+
+    return {
+        "active_day_streak": active_day_streak,
+        "longest_day_streak": longest_day_streak,
+    }
+
+
 def build_training_insights(user_id: int = config.DEFAULT_USER_ID) -> dict[str, Any]:
     rows = fetch_recent_user_workouts(
         user_id,
@@ -382,6 +410,7 @@ def build_training_insights(user_id: int = config.DEFAULT_USER_ID) -> dict[str, 
 
     best_week = max(weeks, key=lambda bucket: bucket["minutes"]) if weeks else None
     consistency_rate = 100 * len(active_weeks) / config.TREND_WINDOW_WEEKS
+    day_streaks = build_day_streaks(workout_days, today)
 
     return {
         "weekly_labels": [bucket["label"] for bucket in weeks],
@@ -399,6 +428,17 @@ def build_training_insights(user_id: int = config.DEFAULT_USER_ID) -> dict[str, 
         "intensity_counts": list(intensity_zones.values()),
         "active_week_streak": active_week_streak,
         "consistency_rate": consistency_rate,
+        "weekly_history": [
+            {
+                "label": bucket["label"],
+                "minutes": bucket["minutes"],
+                "sessions": bucket["sessions"],
+                "is_active": bucket["sessions"] > 0,
+            }
+            for bucket in weeks
+        ],
+        "active_day_streak": day_streaks["active_day_streak"],
+        "longest_day_streak": day_streaks["longest_day_streak"],
         "active_days": len(workout_days),
         "best_week_minutes": best_week["minutes"] if best_week else 0,
         "best_week_label": best_week["label"] if best_week else None,

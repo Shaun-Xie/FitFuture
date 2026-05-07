@@ -144,11 +144,83 @@ def migration_004_training_blocks(cursor: sqlite3.Cursor) -> None:
     )
 
 
+def migration_005_training_block_history(cursor: sqlite3.Cursor) -> None:
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS training_blocks (
+            block_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            block_name TEXT NOT NULL,
+            training_focus TEXT NOT NULL,
+            start_date TEXT NOT NULL,
+            end_date TEXT NOT NULL,
+            target_weekly_minutes INTEGER NOT NULL,
+            target_weekly_sessions INTEGER NOT NULL,
+            target_effort INTEGER,
+            notes TEXT,
+            status TEXT NOT NULL DEFAULT 'active',
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            archived_at TEXT,
+            FOREIGN KEY (user_id) REFERENCES users(user_id)
+        );
+        """
+    )
+    cursor.execute(
+        """
+        CREATE INDEX IF NOT EXISTS idx_training_blocks_user_status
+        ON training_blocks(user_id, status, updated_at);
+        """
+    )
+
+    copied_count = cursor.execute("SELECT COUNT(*) AS c FROM training_blocks").fetchone()["c"]
+    if copied_count:
+        return
+
+    old_table_exists = cursor.execute(
+        """
+        SELECT COUNT(*) AS c
+        FROM sqlite_master
+        WHERE type = 'table' AND name = 'user_training_blocks'
+        """
+    ).fetchone()["c"]
+    if not old_table_exists:
+        return
+
+    rows = cursor.execute("SELECT * FROM user_training_blocks").fetchall()
+    for row in rows:
+        timestamp = row["updated_at"]
+        cursor.execute(
+            """
+            INSERT INTO training_blocks
+            (user_id, block_name, training_focus, start_date, end_date,
+             target_weekly_minutes, target_weekly_sessions, target_effort,
+             notes, status, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                row["user_id"],
+                row["block_name"],
+                row["training_focus"],
+                row["start_date"],
+                row["end_date"],
+                row["target_weekly_minutes"],
+                row["target_weekly_sessions"],
+                row["target_effort"],
+                row["notes"],
+                "active",
+                timestamp,
+                timestamp,
+            ),
+        )
+
+
 MIGRATIONS = (
     (1, "initial_schema", migration_001_initial_schema),
     (2, "user_goals", migration_002_user_goals),
     (3, "recovery_tracking", migration_003_recovery_tracking),
     (4, "training_blocks", migration_004_training_blocks),
+    (5, "training_block_history", migration_005_training_block_history),
 )
 
 

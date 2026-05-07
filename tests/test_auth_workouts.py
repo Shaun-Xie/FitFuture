@@ -22,6 +22,16 @@ def test_demo_user_can_log_in_and_view_dashboard(client):
     assert b"FitFuture Training Console" in dashboard.data
 
 
+def test_plan_page_separates_planning_workspace(client):
+    register(client, "plan@example.com", "password123")
+
+    response = client.get("/plan")
+
+    assert response.status_code == 200
+    assert b"FitFuture Plan Studio" in response.data
+    assert b"Current Training Block" in response.data
+
+
 def test_registration_creates_profile_and_session(client):
     response = register(client, "new@example.com", "password123")
 
@@ -179,7 +189,7 @@ def test_training_block_update_persists_current_phase(client):
 
     assert response.status_code == 302
     block = db.fetch_one(
-        "SELECT * FROM user_training_blocks WHERE user_id = ?",
+        "SELECT * FROM training_blocks WHERE user_id = ? AND status = 'active'",
         (user["user_id"],),
     )
     assert block["block_name"] == "Base Build"
@@ -187,6 +197,29 @@ def test_training_block_update_persists_current_phase(client):
     assert block["target_weekly_minutes"] == 240
     assert block["target_weekly_sessions"] == 5
     assert block["target_effort"] == 7
+
+    response = client.post(
+        "/training-block",
+        data={
+            "block_name": "Peak Block",
+            "training_focus": "strength",
+            "start_date": "2026-06-15",
+            "end_date": "2026-07-12",
+            "target_weekly_minutes": "180",
+            "target_weekly_sessions": "4",
+            "target_effort": "8",
+            "notes": "Save as new phase",
+            "save_mode": "new",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    blocks = db.fetch_all(
+        "SELECT status FROM training_blocks WHERE user_id = ? ORDER BY block_id",
+        (user["user_id"],),
+    )
+    assert [block["status"] for block in blocks] == ["completed", "active"]
 
 
 def test_training_block_validation_rejects_bad_input(client):

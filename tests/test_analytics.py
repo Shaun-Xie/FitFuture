@@ -72,12 +72,15 @@ def test_training_insights_builds_trend_and_intensity_zones(client):
     assert sum(insights["weekly_minutes"]) == 120
     assert sum(insights["weekly_sessions"]) == 3
     assert insights["active_days"] == 3
+    assert len(insights["weekly_history"]) == config.TREND_WINDOW_WEEKS
     assert insights["best_week_minutes"] == 60
     assert insights["intensity_labels"] == ["Recovery", "Base", "Hard", "Peak"]
     assert insights["intensity_counts"] == [1, 1, 0, 1]
     assert round(insights["avg_recovery_rating"], 1) == 3.3
     assert round(insights["avg_sleep_hours"], 1) == 6.8
     assert insights["strain_risk_sessions"] == 1
+    assert insights["active_day_streak"] == 1
+    assert insights["longest_day_streak"] == 1
 
 
 def test_training_block_progress_uses_current_week_targets(client):
@@ -109,6 +112,24 @@ def test_training_block_progress_uses_current_week_targets(client):
     assert progress["current_week_minutes_percent"] == 30
     assert progress["current_week_sessions_percent"] == 25
     assert progress["effort_delta"] == 2
+
+    blocks.save_training_block(
+        user["user_id"],
+        {
+            "block_name": "Peak Build",
+            "training_focus": "hybrid",
+            "start_date": (today + timedelta(days=29)).isoformat(),
+            "end_date": (today + timedelta(days=56)).isoformat(),
+            "target_weekly_minutes": 180,
+            "target_weekly_sessions": 3,
+            "target_effort": 8,
+            "notes": "Second block",
+        },
+        start_new=True,
+    )
+    history = blocks.list_training_blocks(user["user_id"])
+
+    assert [item["status"] for item in history] == ["active", "completed"]
 
 
 def test_recommendations_reflect_training_state():

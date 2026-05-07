@@ -600,8 +600,40 @@ h2 {
     align-content: start;
 }
 
+.mini-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+    margin-bottom: 14px;
+}
+
+.mini-stat-grid div {
+    padding: 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: rgba(255, 255, 255, 0.035);
+}
+
+.mini-stat-grid span {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--text-muted);
+    font-size: 0.72rem;
+    font-weight: 850;
+    text-transform: uppercase;
+}
+
+.mini-stat-grid strong {
+    display: block;
+    overflow-wrap: anywhere;
+}
+
 form {
     margin: 0;
+}
+
+.archive-form {
+    margin-top: 12px;
 }
 
 .field-row {
@@ -1066,6 +1098,68 @@ tbody tr:last-child td {
     line-height: 1.48;
 }
 
+.streak-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.streak-summary article,
+.streak-week {
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: rgba(255, 255, 255, 0.035);
+}
+
+.streak-summary article {
+    padding: 16px;
+}
+
+.streak-summary span,
+.streak-week span,
+.streak-week small {
+    color: var(--text-muted);
+    font-size: 0.74rem;
+    font-weight: 800;
+    text-transform: uppercase;
+}
+
+.streak-summary strong {
+    display: block;
+    margin: 8px 0 6px;
+    font-size: 1.6rem;
+}
+
+.streak-summary p {
+    margin: 0;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    line-height: 1.4;
+}
+
+.streak-timeline {
+    display: grid;
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+    gap: 8px;
+}
+
+.streak-week {
+    display: grid;
+    gap: 5px;
+    min-height: 94px;
+    padding: 12px;
+}
+
+.streak-week strong {
+    font-size: 1.35rem;
+}
+
+.streak-week-active {
+    border-color: rgba(53, 208, 127, 0.46);
+    background: rgba(53, 208, 127, 0.1);
+}
+
 .chart-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1113,6 +1207,12 @@ tbody tr:last-child td {
     color: var(--text-main);
 }
 
+.empty-panel-compact {
+    min-height: 104px;
+    margin-bottom: 12px;
+    padding: 14px;
+}
+
 @media (max-width: 1040px) {
     .dashboard-hero,
     .auth-layout,
@@ -1135,8 +1235,13 @@ tbody tr:last-child td {
     .metric-grid,
     .insight-grid,
     .recommendation-grid,
-    .record-grid {
+    .record-grid,
+    .streak-summary {
         grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .streak-timeline {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
     }
 }
 
@@ -1167,7 +1272,7 @@ tbody tr:last-child td {
 
     .nav-tabs {
         display: grid;
-        grid-template-columns: 1fr 1fr;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     .nav-tab {
@@ -1200,7 +1305,9 @@ tbody tr:last-child td {
     .insight-grid,
     .recommendation-grid,
     .record-grid,
-    .chart-grid {
+    .chart-grid,
+    .streak-summary,
+    .streak-timeline {
         grid-template-columns: 1fr;
     }
 

@@ -4,11 +4,14 @@ from typing import Any
 
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 
+from . import analytics as training_analytics
 from .auth import get_current_user_id, login_required
 from .blocks import (
     TRAINING_FOCUS_OPTIONS,
+    archive_current_training_block,
     build_training_block_progress,
     get_training_block,
+    list_training_blocks,
     save_training_block,
 )
 from .db import fetch_all, fetch_one, get_db
@@ -109,18 +112,10 @@ def render_workouts_page(
     workout: dict[str, Any] | None = None,
     workout_form: dict[str, Any] | None = None,
     workout_errors: list[str] | None = None,
-    profile_form: dict[str, Any] | None = None,
-    profile_errors: list[str] | None = None,
-    goal_form: dict[str, Any] | None = None,
-    goal_errors: list[str] | None = None,
-    block_form: dict[str, Any] | None = None,
-    block_errors: list[str] | None = None,
 ) -> str:
     user_id = get_current_user_id()
     filters = get_workout_filters()
     workouts = fetch_workouts(user_id, filters)
-    profile = get_user_profile(user_id)
-    goals = get_user_goals(user_id)
     training_block = get_training_block(user_id)
     training_block_progress = build_training_block_progress(training_block)
 
@@ -133,6 +128,38 @@ def render_workouts_page(
         workout=workout,
         workout_form=workout_form or workout or {},
         workout_errors=workout_errors or [],
+        training_block=training_block,
+        training_block_progress=training_block_progress,
+        form_action=(
+            url_for("workouts.create_workout")
+            if workout is None
+            else url_for("workouts.update_workout", workout_id=workout["workout_id"])
+        ),
+    )
+
+
+def render_plan_page(
+    profile_form: dict[str, Any] | None = None,
+    profile_errors: list[str] | None = None,
+    goal_form: dict[str, Any] | None = None,
+    goal_errors: list[str] | None = None,
+    block_form: dict[str, Any] | None = None,
+    block_errors: list[str] | None = None,
+) -> str:
+    user_id = get_current_user_id()
+    profile = get_user_profile(user_id)
+    goals = get_user_goals(user_id)
+    training_block = get_training_block(user_id)
+    training_insights = training_analytics.build_training_insights(user_id)
+    training_block_progress = build_training_block_progress(
+        training_block,
+        training_insights,
+    )
+    block_history = list_training_blocks(user_id)
+
+    return render_template(
+        "plan.html",
+        active_view="plan",
         profile_form=profile_form or profile or {},
         profile_errors=profile_errors or [],
         goal_form=goal_form or goals,
@@ -141,12 +168,8 @@ def render_workouts_page(
         block_errors=block_errors or [],
         training_block=training_block,
         training_block_progress=training_block_progress,
+        block_history=block_history,
         training_focus_options=TRAINING_FOCUS_OPTIONS,
-        form_action=(
-            url_for("workouts.create_workout")
-            if workout is None
-            else url_for("workouts.update_workout", workout_id=workout["workout_id"])
-        ),
         profile=profile,
         goals=goals,
     )
@@ -156,6 +179,12 @@ def render_workouts_page(
 @login_required
 def index() -> str:
     return render_workouts_page()
+
+
+@workouts_bp.route("/plan")
+@login_required
+def plan() -> str:
+    return render_plan_page()
 
 
 @workouts_bp.route("/workouts", methods=["POST"])
@@ -254,7 +283,7 @@ def update_profile() -> Any:
     values, errors = validate_profile_form(request.form)
     if errors:
         return (
-            render_workouts_page(
+            render_plan_page(
                 profile_form=values,
                 profile_errors=errors,
             ),
@@ -278,7 +307,7 @@ def update_profile() -> Any:
         )
 
     flash("Profile saved.", "success")
-    return redirect(url_for("workouts.index"))
+    return redirect(url_for("workouts.plan"))
 
 
 @workouts_bp.route("/goals", methods=["POST"])
@@ -288,7 +317,7 @@ def update_goals() -> Any:
     values, errors = validate_goals_form(request.form)
     if errors:
         return (
-            render_workouts_page(
+            render_plan_page(
                 goal_form=values,
                 goal_errors=errors,
             ),
@@ -302,7 +331,7 @@ def update_goals() -> Any:
     )
 
     flash("Training goals saved.", "success")
-    return redirect(url_for("workouts.index"))
+    return redirect(url_for("workouts.plan"))
 
 
 @workouts_bp.route("/training-block", methods=["POST"])
@@ -312,14 +341,26 @@ def update_training_block() -> Any:
     values, errors = validate_training_block_form(request.form)
     if errors:
         return (
-            render_workouts_page(
+            render_plan_page(
                 block_form=values,
                 block_errors=errors,
             ),
             400,
         )
 
-    save_training_block(user_id, values)
+    save_training_block(
+        user_id,
+        values,
+        start_new=request.form.get("save_mode") == "new",
+    )
 
     flash("Training block saved.", "success")
-    return redirect(url_for("workouts.index"))
+    return redirect(url_for("workouts.plan"))
+
+
+@workouts_bp.route("/training-block/archive", methods=["POST"])
+@login_required
+def archive_training_block() -> Any:
+    archive_current_training_block(get_current_user_id())
+    flash("Training block archived.", "success")
+    return redirect(url_for("workouts.plan"))

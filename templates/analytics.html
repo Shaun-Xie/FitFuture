@@ -103,6 +103,42 @@
 <section class="panel recommendation-panel">
     <div class="panel-header">
         <div>
+            <p class="section-kicker">Streak History</p>
+            <h2>Recent Training Rhythm</h2>
+        </div>
+        <span class="pill">{{ training_insights.active_week_streak }} week streak</span>
+    </div>
+    <div class="streak-summary">
+        <article>
+            <span>Active Days</span>
+            <strong>{{ training_insights.active_days }}</strong>
+            <p>days with workouts in the trend window</p>
+        </article>
+        <article>
+            <span>Day Streak</span>
+            <strong>{{ training_insights.active_day_streak }}</strong>
+            <p>consecutive training days through today or yesterday</p>
+        </article>
+        <article>
+            <span>Best Daily Run</span>
+            <strong>{{ training_insights.longest_day_streak }}</strong>
+            <p>longest consecutive-day run in this window</p>
+        </article>
+    </div>
+    <div class="streak-timeline">
+        {% for week in training_insights.weekly_history %}
+            <div class="streak-week {% if week.is_active %}streak-week-active{% endif %}">
+                <span>{{ week.label }}</span>
+                <strong>{{ week.sessions }}</strong>
+                <small>{{ week.minutes }}m</small>
+            </div>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="panel recommendation-panel">
+    <div class="panel-header">
+        <div>
             <p class="section-kicker">Periodization</p>
             <h2>Current Training Block</h2>
         </div>

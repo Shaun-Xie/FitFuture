@@ -18,16 +18,19 @@ The app includes a demo user for quick exploration, while registration allows ne
 - Server-side form validation with user-facing error and success states.
 - Weekly goal setting for training minutes and session count.
 - Current training block planning with focus, dates, weekly load targets, and target effort.
+- Training block history with archive/start-new behavior for completed phases.
 - Personal-record cards for longest session, peak effort, best week, streak, and total sessions.
 - Workout session logging with date, time, duration, perceived intensity, recovery rating, sleep hours, source, and notes.
 - Editable user profile for age and gender based cohort comparisons.
 - Filterable workout ledger with dashboard metrics for volume, session count, duration, and intensity.
 - 30-day fitness summary with weekly training volume, average session duration, and simple score projection.
 - 8-week training trend analysis with weekly minutes, sessions, active days, best week, and consistency rate.
+- Streak history with recent active-week rhythm, active-day streak, and longest daily run.
 - Intensity-zone breakdown across recovery, base, hard, and peak training sessions.
 - Recovery readiness analytics based on logged recovery scores, sleep hours, and high-effort risk flags.
 - Recommendation cards that adapt to recent volume, block pace, intensity, consistency, and recovery signals.
 - Population comparisons using public Kaggle datasets.
+- Separate Workouts, Plan, and Analytics pages to keep daily logging, planning, and analysis focused.
 - Responsive dark fitness-dashboard UI built with Flask templates, CSS, and Chart.js.
 
 ## Tech stack
@@ -61,6 +64,7 @@ FitFuture/
 ├── templates/
 │   ├── auth.html
 │   ├── base.html
+│   ├── plan.html
 │   ├── workouts.html
 │   └── analytics.html
 ├── static/
@@ -86,9 +90,9 @@ FitFuture/
 2. `auth.py`
    Handles login, registration, logout, session helpers, and route protection.
 3. `workouts.py`
-   Owns workout CRUD routes, filtering, dashboard metrics, profile updates, goals, and training-block setup.
+   Owns workout CRUD routes, filtering, dashboard metrics, the Plan page, profile updates, goals, and training-block setup.
 4. `analytics.py`
-   Computes 30-day summaries, cohort percentiles, 8-week trends, intensity zones, recovery readiness, block pacing, and recommendations.
+   Computes 30-day summaries, cohort percentiles, 8-week trends, streak history, intensity zones, recovery readiness, block pacing, and recommendations.
 5. `analytics_routes.py`
    Renders the analytics dashboard using the analytics service layer.
 6. `datasets.py`
@@ -98,7 +102,7 @@ FitFuture/
 8. `goals.py`
    Manages weekly goals, goal progress, and personal-record calculations.
 9. `blocks.py`
-   Manages the current training block, focus labels, phase status, and block progress calculations.
+   Manages active and historical training blocks, focus labels, phase status, and block progress calculations.
 10. `validation.py`
    Validates auth, profile, and workout forms before data reaches SQLite.
 11. `config.py`, `users.py`, and `utils.py`
@@ -143,7 +147,8 @@ The test suite uses isolated temporary SQLite databases, so route and analytics 
 - Handles invalid form submissions with clear inline errors and success feedback.
 - Adds user-configurable goals and personal-record calculations for product depth.
 - Adds recovery and sleep tracking that feeds readiness-aware coaching.
-- Adds periodized training blocks that connect planning, weekly targets, analytics, and recommendations.
+- Adds periodized training blocks and history that connect planning, weekly targets, analytics, and recommendations.
+- Improves information architecture with dedicated Workouts, Plan, and Analytics pages.
 - Shows practical data work with multiple large CSV datasets and cached pandas summaries.
 - Uses custom analytics logic instead of static placeholder charts.
 - Includes pytest coverage for auth, protected routes, validation, goals, workout ownership, migrations, and analytics helpers.
@@ -153,7 +158,7 @@ The test suite uses isolated temporary SQLite databases, so route and analytics 
 ## Roadmap
 
 - Add SQLAlchemy or a richer repository layer if the schema grows.
-- Add richer streak history and training-block history.
+- Add richer workout calendar views and export/import workflows.
 - Deploy the app with production config and a public demo URL.
 
 ## Dataset citations

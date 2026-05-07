@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, datetime
 from typing import Any
 
-from .db import fetch_one, get_db
+from .db import fetch_all, fetch_one, get_db
 from .utils import parse_workout_date
 
 TRAINING_FOCUS_OPTIONS = (
@@ -20,30 +20,85 @@ ALLOWED_TRAINING_FOCUSES = set(TRAINING_FOCUS_LABELS)
 
 def get_training_block(user_id: int) -> dict[str, Any] | None:
     return fetch_one(
-        "SELECT * FROM user_training_blocks WHERE user_id = ?",
+        """
+        SELECT *
+        FROM training_blocks
+        WHERE user_id = ? AND status = 'active'
+        ORDER BY updated_at DESC, block_id DESC
+        LIMIT 1
+        """,
         (user_id,),
     )
 
 
-def save_training_block(user_id: int, values: dict[str, Any]) -> None:
+def archive_current_training_block(user_id: int) -> None:
+    current_block = get_training_block(user_id)
+    if current_block is None:
+        return
+
+    timestamp = datetime.utcnow().isoformat()
     with get_db() as conn:
         conn.execute(
             """
-            INSERT INTO user_training_blocks
+            UPDATE training_blocks
+            SET status = 'completed', archived_at = ?, updated_at = ?
+            WHERE block_id = ? AND user_id = ?
+            """,
+            (
+                timestamp,
+                timestamp,
+                current_block["block_id"],
+                user_id,
+            ),
+        )
+
+
+def save_training_block(
+    user_id: int,
+    values: dict[str, Any],
+    *,
+    start_new: bool = False,
+) -> None:
+    current_block = get_training_block(user_id)
+    timestamp = datetime.utcnow().isoformat()
+
+    if current_block is not None and not start_new:
+        with get_db() as conn:
+            conn.execute(
+                """
+                UPDATE training_blocks
+                SET block_name = ?, training_focus = ?, start_date = ?, end_date = ?,
+                    target_weekly_minutes = ?, target_weekly_sessions = ?,
+                    target_effort = ?, notes = ?, updated_at = ?
+                WHERE block_id = ? AND user_id = ?
+                """,
+                (
+                    values["block_name"],
+                    values["training_focus"],
+                    values["start_date"],
+                    values["end_date"],
+                    values["target_weekly_minutes"],
+                    values["target_weekly_sessions"],
+                    values["target_effort"],
+                    values["notes"],
+                    timestamp,
+                    current_block["block_id"],
+                    user_id,
+                ),
+            )
+        return
+
+    if current_block is not None:
+        archive_current_training_block(user_id)
+
+    with get_db() as conn:
+        conn.execute(
+            """
+            INSERT INTO training_blocks
             (user_id, block_name, training_focus, start_date, end_date,
              target_weekly_minutes, target_weekly_sessions, target_effort,
-             notes, updated_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT(user_id) DO UPDATE SET
-                block_name = excluded.block_name,
-                training_focus = excluded.training_focus,
-                start_date = excluded.start_date,
-                end_date = excluded.end_date,
-                target_weekly_minutes = excluded.target_weekly_minutes,
-                target_weekly_sessions = excluded.target_weekly_sessions,
-                target_effort = excluded.target_effort,
-                notes = excluded.notes,
-                updated_at = excluded.updated_at
+             notes, status, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)
             """,
             (
                 user_id,
@@ -55,9 +110,39 @@ def save_training_block(user_id: int, values: dict[str, Any]) -> None:
                 values["target_weekly_sessions"],
                 values["target_effort"],
                 values["notes"],
-                datetime.utcnow().isoformat(),
+                timestamp,
+                timestamp,
             ),
         )
+
+
+def list_training_blocks(user_id: int, limit: int = 6) -> list[dict[str, Any]]:
+    rows = fetch_all(
+        """
+        SELECT *
+        FROM training_blocks
+        WHERE user_id = ?
+        ORDER BY
+            CASE WHEN status = 'active' THEN 0 ELSE 1 END,
+            updated_at DESC,
+            block_id DESC
+        LIMIT ?
+        """,
+        (user_id, limit),
+    )
+    return [decorate_training_block(row) for row in rows]
+
+
+def decorate_training_block(block: dict[str, Any]) -> dict[str, Any]:
+    status = block.get("status", "active")
+    return {
+        **block,
+        "focus_label": TRAINING_FOCUS_LABELS.get(
+            block["training_focus"],
+            block["training_focus"].replace("_", " ").title(),
+        ),
+        "status_label": "Current" if status == "active" else "Completed",
+    }
 
 
 def _latest_number(values: list[Any]) -> float | None:
