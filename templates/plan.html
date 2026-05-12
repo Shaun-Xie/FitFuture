@@ -4,7 +4,7 @@
 <section class="page-intro">
     <div>
         <p class="eyebrow">Plan</p>
-        <h1>Set a clear weekly target.</h1>
+        <h1>Set a clear workout target.</h1>
         <p class="hero-lede">Use this page only for goals, your current training block, and basic profile settings.</p>
     </div>
     <div class="intro-summary">
@@ -15,19 +15,19 @@
 
 <section class="metric-grid">
     <article class="metric-tile">
-        <span class="metric-label">Weekly Minutes</span>
-        <strong>{{ goals.weekly_minutes_goal }}</strong>
-        <span class="metric-note">goal</span>
-    </article>
-    <article class="metric-tile">
-        <span class="metric-label">Weekly Sessions</span>
+        <span class="metric-label">Workouts / Week</span>
         <strong>{{ goals.weekly_sessions_goal }}</strong>
         <span class="metric-note">goal</span>
     </article>
     <article class="metric-tile">
-        <span class="metric-label">Block Target</span>
-        <strong>{{ training_block_progress.target_weekly_minutes if training_block_progress.has_block else '--' }}</strong>
-        <span class="metric-note">minutes/week</span>
+        <span class="metric-label">Duration</span>
+        <strong>{{ (goals.weekly_minutes_goal // goals.weekly_sessions_goal) if goals.weekly_sessions_goal else '--' }}</strong>
+        <span class="metric-note">minutes/workout</span>
+    </article>
+    <article class="metric-tile">
+        <span class="metric-label">Weekly Total</span>
+        <strong>{{ goals.weekly_minutes_goal }}</strong>
+        <span class="metric-note">calculated minutes</span>
     </article>
     <article class="metric-tile">
         <span class="metric-label">Saved Blocks</span>
@@ -61,7 +61,7 @@
                 </div>
             </div>
             <div class="field-row">
-                <div class="field">
+                <div class="field field-full">
                     <label for="training_focus">Focus</label>
                     <select id="training_focus" name="training_focus" required>
                         {% set selected_focus = block_form.training_focus if block_form else '' %}
@@ -69,10 +69,6 @@
                             <option value="{{ value }}" {% if selected_focus == value %}selected{% endif %}>{{ label }}</option>
                         {% endfor %}
                     </select>
-                </div>
-                <div class="field">
-                    <label for="target_effort">Effort Target</label>
-                    <input type="number" id="target_effort" name="target_effort" min="1" max="10" placeholder="1-10" value="{{ block_form.target_effort if block_form and block_form.target_effort is not none else '' }}">
                 </div>
             </div>
             <div class="field-row">
@@ -85,16 +81,19 @@
                     <input type="date" id="end_date" name="end_date" value="{{ (block_form.end_date if block_form else '') or '' }}" required>
                 </div>
             </div>
+            {% set block_workouts = (block_form.workouts_per_week if block_form and block_form.workouts_per_week else block_form.target_weekly_sessions if block_form else '') %}
+            {% set block_duration = (block_form.workout_duration_minutes if block_form and block_form.workout_duration_minutes else (block_form.target_weekly_minutes // block_form.target_weekly_sessions) if block_form and block_form.target_weekly_sessions else '') %}
             <div class="field-row">
                 <div class="field">
-                    <label for="target_weekly_minutes">Weekly Minutes</label>
-                    <input type="number" id="target_weekly_minutes" name="target_weekly_minutes" min="30" max="900" value="{{ (block_form.target_weekly_minutes if block_form else '') or '' }}" required>
+                    <label for="block_workouts_per_week">Workouts a Week</label>
+                    <input type="number" id="block_workouts_per_week" name="workouts_per_week" min="1" max="14" value="{{ block_workouts }}" required>
                 </div>
                 <div class="field">
-                    <label for="target_weekly_sessions">Weekly Sessions</label>
-                    <input type="number" id="target_weekly_sessions" name="target_weekly_sessions" min="1" max="14" value="{{ (block_form.target_weekly_sessions if block_form else '') or '' }}" required>
+                    <label for="block_workout_duration_minutes">Duration Each Workout</label>
+                    <input type="number" id="block_workout_duration_minutes" name="workout_duration_minutes" min="10" max="300" value="{{ block_duration }}" required>
                 </div>
             </div>
+            <p class="calculated-note">Total weekly target: {{ (block_workouts|int) * (block_duration|int) if block_workouts and block_duration else 0 }} minutes</p>
             <div class="field-row">
                 <div class="field field-full">
                     <label for="block_notes">Notes</label>
@@ -129,16 +128,19 @@
                         {% endfor %}
                     </div>
                 {% endif %}
+                {% set goal_workouts = (goal_form.workouts_per_week if goal_form and goal_form.workouts_per_week else goal_form.weekly_sessions_goal if goal_form else '') %}
+                {% set goal_duration = (goal_form.workout_duration_minutes if goal_form and goal_form.workout_duration_minutes else (goal_form.weekly_minutes_goal // goal_form.weekly_sessions_goal) if goal_form and goal_form.weekly_sessions_goal else '') %}
                 <div class="field-row">
                     <div class="field">
-                        <label for="weekly_minutes_goal">Minutes</label>
-                        <input type="number" id="weekly_minutes_goal" name="weekly_minutes_goal" min="30" max="600" value="{{ (goal_form.weekly_minutes_goal if goal_form else '') or '' }}" required>
+                        <label for="goal_workouts_per_week">Workouts a Week</label>
+                        <input type="number" id="goal_workouts_per_week" name="workouts_per_week" min="1" max="14" value="{{ goal_workouts }}" required>
                     </div>
                     <div class="field">
-                        <label for="weekly_sessions_goal">Sessions</label>
-                        <input type="number" id="weekly_sessions_goal" name="weekly_sessions_goal" min="1" max="14" value="{{ (goal_form.weekly_sessions_goal if goal_form else '') or '' }}" required>
+                        <label for="goal_workout_duration_minutes">Duration Each Workout</label>
+                        <input type="number" id="goal_workout_duration_minutes" name="workout_duration_minutes" min="10" max="300" value="{{ goal_duration }}" required>
                     </div>
                 </div>
+                <p class="calculated-note">Total weekly goal: {{ (goal_workouts|int) * (goal_duration|int) if goal_workouts and goal_duration else 0 }} minutes</p>
                 <div class="btn-row">
                     <button type="submit" class="btn btn-ghost">Save Goals</button>
                 </div>
@@ -197,7 +199,7 @@
                 <article class="history-item">
                     <div class="history-main">
                         <strong>{{ block.block_name }}</strong>
-                        <span>{{ block.focus_label }} · {{ block.start_date }} to {{ block.end_date }} · {{ block.target_weekly_minutes }} min/week</span>
+                        <span>{{ block.focus_label }} · {{ block.start_date }} to {{ block.end_date }} · {{ block.target_weekly_sessions }} workouts/week · {{ (block.target_weekly_minutes // block.target_weekly_sessions) if block.target_weekly_sessions else '--' }} min each · {{ block.target_weekly_minutes }} min total</span>
                     </div>
                     <span class="pill">{{ block.status_label }}</span>
                 </article>

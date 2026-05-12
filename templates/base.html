@@ -44,6 +44,12 @@
                     Workouts
                 </a>
                 <a
+                    href="{{ url_for('workouts.sleep') }}"
+                    class="nav-tab {% if active_view == 'sleep' %}nav-tab-active{% endif %}"
+                >
+                    Sleep
+                </a>
+                <a
                     href="{{ url_for('workouts.plan') }}"
                     class="nav-tab {% if active_view == 'plan' %}nav-tab-active{% endif %}"
                 >

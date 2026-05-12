@@ -5,7 +5,7 @@
     <div>
         <p class="eyebrow">Workouts</p>
         <h1>Log workouts and review your history.</h1>
-        <p class="hero-lede">A simple view for the details that matter: date, duration, effort, recovery, and notes.</p>
+        <p class="hero-lede">A simple view for the details that matter: date, duration, intensity, and notes.</p>
     </div>
     <div class="intro-summary">
         <strong>{{ workout_metrics.session_count }}</strong>
@@ -28,11 +28,6 @@
         <span class="metric-label">Average</span>
         <strong>{{ workout_metrics.avg_duration|round(0) if workout_metrics.avg_duration else '--' }}</strong>
         <span class="metric-note">minutes/workout</span>
-    </article>
-    <article class="metric-tile">
-        <span class="metric-label">Effort</span>
-        <strong>{{ workout_metrics.avg_intensity|round(1) if workout_metrics.avg_intensity else '--' }}</strong>
-        <span class="metric-note">average out of 10</span>
     </article>
 </section>
 
@@ -65,16 +60,8 @@
             </div>
             <div class="field-row">
                 <div class="field">
-                    <label for="perceived_intensity">Effort</label>
+                    <label for="perceived_intensity">Intensity</label>
                     <input type="number" id="perceived_intensity" name="perceived_intensity" min="1" max="10" placeholder="1-10" value="{{ (workout_form.perceived_intensity if workout_form else '') or '' }}">
-                </div>
-                <div class="field">
-                    <label for="recovery_rating">Recovery</label>
-                    <input type="number" id="recovery_rating" name="recovery_rating" min="1" max="5" placeholder="1-5" value="{{ workout_form.recovery_rating if workout_form and workout_form.recovery_rating is not none else '' }}">
-                </div>
-                <div class="field">
-                    <label for="sleep_hours">Sleep</label>
-                    <input type="number" id="sleep_hours" name="sleep_hours" min="0" max="16" step="0.1" placeholder="Hours" value="{{ workout_form.sleep_hours if workout_form and workout_form.sleep_hours is not none else '' }}">
                 </div>
             </div>
             <div class="field-row">
@@ -138,9 +125,7 @@
                         <strong>{{ w.workout_date }}</strong>
                         <span>
                             {{ w.total_duration_minutes or '--' }} min
-                            {% if w.perceived_intensity %} · {{ w.perceived_intensity }}/10 effort{% endif %}
-                            {% if w.recovery_rating is not none %} · {{ w.recovery_rating }}/5 recovery{% endif %}
-                            {% if w.sleep_hours is not none %} · {{ w.sleep_hours|round(1) }}h sleep{% endif %}
+                            {% if w.perceived_intensity %} · {{ w.perceived_intensity }}/10 intensity{% endif %}
                         </span>
                         {% if w.notes %}
                             <p>{{ w.notes }}</p>

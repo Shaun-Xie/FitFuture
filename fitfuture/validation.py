@@ -37,7 +37,9 @@ def validate_workout_form(form: Any) -> tuple[dict[str, Any], list[str]]:
         "workout_date": parse_optional_text(form.get("workout_date")),
         "start_time": parse_optional_text(form.get("start_time")),
         "end_time": parse_optional_text(form.get("end_time")),
-        "total_duration_minutes": parse_optional_int(form.get("total_duration_minutes")),
+        "total_duration_minutes": parse_optional_int(
+            form.get("total_duration_minutes")
+        ),
         "perceived_intensity": parse_optional_int(form.get("perceived_intensity")),
         "recovery_rating": parse_optional_int(form.get("recovery_rating")),
         "sleep_hours": parse_optional_float(form.get("sleep_hours")),
@@ -62,7 +64,7 @@ def validate_workout_form(form: Any) -> tuple[dict[str, Any], list[str]]:
 
     intensity = values["perceived_intensity"]
     if intensity is not None and not 1 <= intensity <= 10:
-        errors.append("Effort must be between 1 and 10.")
+        errors.append("Intensity must be between 1 and 10.")
 
     recovery = values["recovery_rating"]
     if recovery is not None and not 1 <= recovery <= 5:
@@ -74,6 +76,36 @@ def validate_workout_form(form: Any) -> tuple[dict[str, Any], list[str]]:
 
     if values["source"] not in ALLOWED_SOURCES:
         errors.append("Source must be manual, app, device, or blank.")
+
+    if values["notes"] and len(values["notes"]) > 500:
+        errors.append("Notes must stay under 500 characters.")
+
+    return values, errors
+
+
+def validate_sleep_form(form: Any) -> tuple[dict[str, Any], list[str]]:
+    values = {
+        "sleep_date": parse_optional_text(form.get("sleep_date")),
+        "sleep_hours": parse_optional_float(form.get("sleep_hours")),
+        "recovery_rating": parse_optional_int(form.get("recovery_rating")),
+        "notes": parse_optional_text(form.get("notes")),
+    }
+    errors: list[str] = []
+
+    if not values["sleep_date"]:
+        errors.append("Sleep date is required.")
+    elif not is_valid_date(values["sleep_date"]):
+        errors.append("Sleep date must be a valid date.")
+
+    sleep_hours = values["sleep_hours"]
+    if sleep_hours is None:
+        errors.append("Sleep hours are required.")
+    elif not 0 <= sleep_hours <= 16:
+        errors.append("Sleep must be between 0 and 16 hours.")
+
+    recovery = values["recovery_rating"]
+    if recovery is not None and not 1 <= recovery <= 5:
+        errors.append("Recovery must be between 1 and 5.")
 
     if values["notes"] and len(values["notes"]) > 500:
         errors.append("Notes must stay under 500 characters.")
@@ -98,7 +130,9 @@ def validate_profile_form(form: Any) -> tuple[dict[str, Any], list[str]]:
     return values, errors
 
 
-def validate_auth_form(form: Any, *, require_password_length: bool) -> tuple[dict[str, str], list[str]]:
+def validate_auth_form(
+    form: Any, *, require_password_length: bool
+) -> tuple[dict[str, str], list[str]]:
     values = {
         "email": form.get("email", "").strip().lower(),
         "password": form.get("password", ""),
@@ -119,21 +153,38 @@ def validate_auth_form(form: Any, *, require_password_length: bool) -> tuple[dic
 
 
 def validate_goals_form(form: Any) -> tuple[dict[str, Any], list[str]]:
+    workouts_per_week = parse_optional_int(form.get("workouts_per_week"))
+    workout_duration = parse_optional_int(form.get("workout_duration_minutes"))
     values = {
-        "weekly_minutes_goal": parse_optional_int(form.get("weekly_minutes_goal")),
-        "weekly_sessions_goal": parse_optional_int(form.get("weekly_sessions_goal")),
+        "workouts_per_week": workouts_per_week,
+        "workout_duration_minutes": workout_duration,
+        "weekly_sessions_goal": (
+            workouts_per_week
+            if workouts_per_week is not None
+            else parse_optional_int(form.get("weekly_sessions_goal"))
+        ),
+        "weekly_minutes_goal": (
+            (workouts_per_week * workout_duration)
+            if workouts_per_week is not None and workout_duration is not None
+            else parse_optional_int(form.get("weekly_minutes_goal"))
+        ),
     }
     errors: list[str] = []
 
-    if values["weekly_minutes_goal"] is None:
-        errors.append("Weekly minutes goal is required.")
-    elif not 30 <= values["weekly_minutes_goal"] <= 600:
-        errors.append("Weekly minutes goal must be between 30 and 600.")
-
     if values["weekly_sessions_goal"] is None:
-        errors.append("Weekly sessions goal is required.")
+        errors.append("Workouts per week goal is required.")
     elif not 1 <= values["weekly_sessions_goal"] <= 14:
-        errors.append("Weekly sessions goal must be between 1 and 14.")
+        errors.append("Workouts per week goal must be between 1 and 14.")
+
+    if workout_duration is None and form.get("workout_duration_minutes") is not None:
+        errors.append("Duration each workout is required.")
+    elif workout_duration is not None and not 10 <= workout_duration <= 300:
+        errors.append("Duration each workout must be between 10 and 300 minutes.")
+
+    if values["weekly_minutes_goal"] is None:
+        errors.append("Total weekly minutes goal is required.")
+    elif not 30 <= values["weekly_minutes_goal"] <= 900:
+        errors.append("Total weekly minutes goal must be between 30 and 900.")
 
     return values, errors
 
@@ -145,8 +196,22 @@ def validate_training_block_form(form: Any) -> tuple[dict[str, Any], list[str]]:
         "training_focus": training_focus,
         "start_date": parse_optional_text(form.get("start_date")),
         "end_date": parse_optional_text(form.get("end_date")),
-        "target_weekly_minutes": parse_optional_int(form.get("target_weekly_minutes")),
-        "target_weekly_sessions": parse_optional_int(form.get("target_weekly_sessions")),
+        "workouts_per_week": parse_optional_int(form.get("workouts_per_week")),
+        "workout_duration_minutes": parse_optional_int(
+            form.get("workout_duration_minutes")
+        ),
+        "target_weekly_minutes": (
+            parse_optional_int(form.get("workouts_per_week"))
+            * parse_optional_int(form.get("workout_duration_minutes"))
+            if parse_optional_int(form.get("workouts_per_week")) is not None
+            and parse_optional_int(form.get("workout_duration_minutes")) is not None
+            else parse_optional_int(form.get("target_weekly_minutes"))
+        ),
+        "target_weekly_sessions": (
+            parse_optional_int(form.get("workouts_per_week"))
+            if parse_optional_int(form.get("workouts_per_week")) is not None
+            else parse_optional_int(form.get("target_weekly_sessions"))
+        ),
         "target_effort": parse_optional_int(form.get("target_effort")),
         "notes": parse_optional_text(form.get("notes")),
     }
@@ -180,14 +245,27 @@ def validate_training_block_form(form: Any) -> tuple[dict[str, Any], list[str]]:
             errors.append("Training blocks must be 26 weeks or shorter.")
 
     if values["target_weekly_minutes"] is None:
-        errors.append("Block weekly minutes target is required.")
+        errors.append("Total weekly minutes target is required.")
     elif not 30 <= values["target_weekly_minutes"] <= 900:
-        errors.append("Block weekly minutes target must be between 30 and 900.")
+        errors.append("Total weekly minutes target must be between 30 and 900.")
 
     if values["target_weekly_sessions"] is None:
-        errors.append("Block weekly session target is required.")
+        errors.append("Workouts per week target is required.")
     elif not 1 <= values["target_weekly_sessions"] <= 14:
-        errors.append("Block weekly session target must be between 1 and 14.")
+        errors.append("Workouts per week target must be between 1 and 14.")
+
+    if (
+        values["workout_duration_minutes"] is None
+        and form.get("workout_duration_minutes") is not None
+    ):
+        errors.append("Duration each workout target is required.")
+    elif (
+        values["workout_duration_minutes"] is not None
+        and not 10 <= values["workout_duration_minutes"] <= 300
+    ):
+        errors.append(
+            "Duration each workout target must be between 10 and 300 minutes."
+        )
 
     if values["target_effort"] is not None and not 1 <= values["target_effort"] <= 10:
         errors.append("Block target effort must be between 1 and 10.")

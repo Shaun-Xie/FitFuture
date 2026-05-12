@@ -16,11 +16,11 @@ The app includes a demo user for quick exploration, while registration allows ne
 - Per-user workout ownership enforced on protected routes.
 - Versioned SQLite migrations tracked in a `schema_migrations` table.
 - Server-side form validation with user-facing error and success states.
-- Weekly goal setting for training minutes and session count.
-- Current training block planning with focus, dates, weekly load targets, and target effort.
+- Weekly goal setting by workouts per week and duration per workout, with total minutes calculated automatically.
+- Current training block planning with focus, dates, workouts per week, duration per workout, and calculated weekly load targets.
 - Training block history with archive/start-new behavior for completed phases.
 - Personal-record cards for longest session, peak effort, and recent training streaks.
-- Simple workout logging with date, duration, perceived intensity, recovery rating, sleep hours, and notes.
+- Simple workout logging with date, duration, perceived intensity, and notes.
 - Editable user profile for age and gender based cohort comparisons.
 - Clear workout history with dashboard metrics for volume, session count, duration, and intensity.
 - 30-day fitness summary with weekly training volume, average session duration, and simple score projection.
@@ -30,7 +30,7 @@ The app includes a demo user for quick exploration, while registration allows ne
 - Recovery readiness analytics based on logged recovery scores, sleep hours, and high-effort risk flags.
 - Recommendation cards that adapt to recent volume, block pace, intensity, consistency, and recovery signals.
 - Population comparisons using public Kaggle datasets behind streamlined analytics charts.
-- Separate Workouts, Plan, and Analytics pages to keep daily logging, planning, and analysis focused.
+- Separate Workouts, Sleep, Plan, and Analytics pages to keep daily logging, recovery, planning, and analysis focused.
 - Responsive, minimal UI built with Flask templates, CSS, and Chart.js.
 
 ## Tech stack
@@ -146,9 +146,9 @@ The test suite uses isolated temporary SQLite databases, so route and analytics 
 - Includes session authentication and user-scoped CRUD behavior.
 - Handles invalid form submissions with clear inline errors and success feedback.
 - Adds user-configurable goals and personal-record calculations for product depth.
-- Adds recovery and sleep tracking that feeds readiness-aware coaching.
+- Adds a dedicated sleep and recovery logging workflow that feeds readiness-aware coaching.
 - Adds periodized training blocks and history that connect planning, weekly targets, analytics, and recommendations.
-- Improves information architecture with dedicated Workouts, Plan, and Analytics pages.
+- Improves information architecture with dedicated Workouts, Sleep, Plan, and Analytics pages.
 - Shows practical data work with multiple large CSV datasets and cached pandas summaries.
 - Uses custom analytics logic instead of static placeholder charts.
 - Includes pytest coverage for auth, protected routes, validation, goals, workout ownership, migrations, and analytics helpers.

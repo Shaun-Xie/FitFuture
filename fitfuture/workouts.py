@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Any
 
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
@@ -21,6 +22,7 @@ from .utils import parse_optional_float, parse_optional_int, parse_optional_text
 from .validation import (
     validate_goals_form,
     validate_profile_form,
+    validate_sleep_form,
     validate_training_block_form,
     validate_workout_form,
 )
@@ -84,6 +86,82 @@ def build_workout_metrics(
         "latest_date": workouts[0]["workout_date"] if workouts else None,
         "active_filter_count": sum(1 for value in filters.values() if value),
     }
+
+
+def fetch_sleep_logs(user_id: int) -> list[dict[str, Any]]:
+    return fetch_all(
+        """
+        SELECT *
+        FROM sleep_logs
+        WHERE user_id = ?
+        ORDER BY sleep_date DESC, sleep_id DESC
+        """,
+        (user_id,),
+    )
+
+
+def build_sleep_metrics(sleep_logs: list[dict[str, Any]]) -> dict[str, Any]:
+    sleep_hours = [
+        log["sleep_hours"] for log in sleep_logs if log.get("sleep_hours") is not None
+    ]
+    recovery_ratings = [
+        log["recovery_rating"]
+        for log in sleep_logs
+        if log.get("recovery_rating") is not None
+    ]
+
+    return {
+        "log_count": len(sleep_logs),
+        "avg_sleep_hours": sum(sleep_hours) / len(sleep_hours) if sleep_hours else None,
+        "avg_recovery_rating": (
+            sum(recovery_ratings) / len(recovery_ratings) if recovery_ratings else None
+        ),
+        "latest_date": sleep_logs[0]["sleep_date"] if sleep_logs else None,
+    }
+
+
+def fetch_sleep_log(sleep_id: int, user_id: int) -> dict[str, Any] | None:
+    return fetch_one(
+        "SELECT * FROM sleep_logs WHERE sleep_id = ? AND user_id = ?",
+        (sleep_id, user_id),
+    )
+
+
+def build_sleep_values(values: dict[str, Any], user_id: int) -> tuple[Any, ...]:
+    timestamp = datetime.utcnow().isoformat()
+    return (
+        user_id,
+        values["sleep_date"],
+        values["sleep_hours"],
+        values["recovery_rating"],
+        values["notes"],
+        timestamp,
+        timestamp,
+    )
+
+
+def render_sleep_page(
+    sleep_log: dict[str, Any] | None = None,
+    sleep_form: dict[str, Any] | None = None,
+    sleep_errors: list[str] | None = None,
+) -> str:
+    user_id = get_current_user_id()
+    sleep_logs = fetch_sleep_logs(user_id)
+
+    return render_template(
+        "sleep.html",
+        active_view="sleep",
+        sleep_logs=sleep_logs,
+        sleep_metrics=build_sleep_metrics(sleep_logs),
+        sleep_log=sleep_log,
+        sleep_form=sleep_form or sleep_log or {},
+        sleep_errors=sleep_errors or [],
+        form_action=(
+            url_for("workouts.create_sleep_log")
+            if sleep_log is None
+            else url_for("workouts.update_sleep_log", sleep_id=sleep_log["sleep_id"])
+        ),
+    )
 
 
 def fetch_workout(workout_id: int, user_id: int) -> dict[str, Any] | None:
@@ -187,6 +265,12 @@ def plan() -> str:
     return render_plan_page()
 
 
+@workouts_bp.route("/sleep")
+@login_required
+def sleep() -> str:
+    return render_sleep_page()
+
+
 @workouts_bp.route("/workouts", methods=["POST"])
 @login_required
 def create_workout() -> Any:
@@ -274,6 +358,100 @@ def delete_workout(workout_id: int) -> Any:
 
     flash("Workout deleted.", "success")
     return redirect(url_for("workouts.index"))
+
+
+@workouts_bp.route("/sleep", methods=["POST"])
+@login_required
+def create_sleep_log() -> Any:
+    user_id = get_current_user_id()
+    values, errors = validate_sleep_form(request.form)
+    if errors:
+        return (
+            render_sleep_page(
+                sleep_form=values,
+                sleep_errors=errors,
+            ),
+            400,
+        )
+
+    with get_db() as conn:
+        conn.execute(
+            """
+            INSERT INTO sleep_logs
+            (user_id, sleep_date, sleep_hours, recovery_rating, notes, created_at, updated_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            build_sleep_values(values, user_id),
+        )
+
+    flash("Sleep logged.", "success")
+    return redirect(url_for("workouts.sleep"))
+
+
+@workouts_bp.route("/sleep/<int:sleep_id>/edit")
+@login_required
+def edit_sleep_log(sleep_id: int) -> str:
+    sleep_log = fetch_sleep_log(sleep_id, get_current_user_id())
+    if sleep_log is None:
+        abort(404)
+
+    return render_sleep_page(sleep_log)
+
+
+@workouts_bp.route("/sleep/<int:sleep_id>", methods=["POST"])
+@login_required
+def update_sleep_log(sleep_id: int) -> Any:
+    user_id = get_current_user_id()
+    sleep_log = fetch_sleep_log(sleep_id, user_id)
+    if sleep_log is None:
+        abort(404)
+
+    values, errors = validate_sleep_form(request.form)
+    if errors:
+        return (
+            render_sleep_page(
+                sleep_log=sleep_log,
+                sleep_form=values,
+                sleep_errors=errors,
+            ),
+            400,
+        )
+
+    with get_db() as conn:
+        conn.execute(
+            """
+            UPDATE sleep_logs
+            SET sleep_date = ?, sleep_hours = ?, recovery_rating = ?,
+                notes = ?, updated_at = ?
+            WHERE sleep_id = ? AND user_id = ?
+            """,
+            (
+                values["sleep_date"],
+                values["sleep_hours"],
+                values["recovery_rating"],
+                values["notes"],
+                datetime.utcnow().isoformat(),
+                sleep_id,
+                user_id,
+            ),
+        )
+
+    flash("Sleep log updated.", "success")
+    return redirect(url_for("workouts.sleep"))
+
+
+@workouts_bp.route("/sleep/<int:sleep_id>/delete", methods=["POST"])
+@login_required
+def delete_sleep_log(sleep_id: int) -> Any:
+    user_id = get_current_user_id()
+    with get_db() as conn:
+        conn.execute(
+            "DELETE FROM sleep_logs WHERE sleep_id = ? AND user_id = ?",
+            (sleep_id, user_id),
+        )
+
+    flash("Sleep log deleted.", "success")
+    return redirect(url_for("workouts.sleep"))
 
 
 @workouts_bp.route("/profile", methods=["POST"])
