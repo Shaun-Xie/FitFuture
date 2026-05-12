@@ -17,7 +17,7 @@
                 </div>
                 <div class="brand-text">
                     <div class="brand-title">FitFuture</div>
-                    <div class="brand-subtitle">Training intelligence dashboard</div>
+                    <div class="brand-subtitle">Simple workout tracker</div>
                 </div>
             </div>
             <div class="topbar-actions">
@@ -41,21 +41,18 @@
                     href="{{ url_for('workouts.index') }}"
                     class="nav-tab {% if active_view == 'workouts' %}nav-tab-active{% endif %}"
                 >
-                    <span class="nav-icon">01</span>
                     Workouts
                 </a>
                 <a
                     href="{{ url_for('workouts.plan') }}"
                     class="nav-tab {% if active_view == 'plan' %}nav-tab-active{% endif %}"
                 >
-                    <span class="nav-icon">02</span>
                     Plan
                 </a>
                 <a
                     href="{{ url_for('analytics.dashboard') }}"
                     class="nav-tab {% if active_view == 'analytics' %}nav-tab-active{% endif %}"
                 >
-                    <span class="nav-icon">03</span>
                     Analytics
                 </a>
             {% else %}
@@ -63,14 +60,12 @@
                     href="{{ url_for('auth.login') }}"
                     class="nav-tab {% if active_view == 'auth' and mode == 'login' %}nav-tab-active{% endif %}"
                 >
-                    <span class="nav-icon">01</span>
                     Login
                 </a>
                 <a
                     href="{{ url_for('auth.register') }}"
                     class="nav-tab {% if active_view == 'auth' and mode == 'register' %}nav-tab-active{% endif %}"
                 >
-                    <span class="nav-icon">02</span>
                     Register
                 </a>
             {% endif %}

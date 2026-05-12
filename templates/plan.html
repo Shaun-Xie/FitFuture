@@ -1,73 +1,38 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="dashboard-hero hero-workouts">
-    <div class="hero-copy">
-        <p class="eyebrow">FitFuture Plan Studio</p>
-        <h1>Set the block, targets, and cohort context before training starts.</h1>
-        <p class="hero-lede">
-            Keep profile, goals, and periodized planning away from the daily workout ledger.
-        </p>
-        <div class="hero-meta">
-            {% if training_block_progress.has_block %}
-                <span>{{ training_block_progress.block_name }}</span>
-                <span>{{ training_block_progress.focus_label }}</span>
-                <span>{{ training_block_progress.status_label }}</span>
-            {% else %}
-                <span>Planning workspace</span>
-                <span>No active block</span>
-            {% endif %}
-        </div>
+<section class="page-intro">
+    <div>
+        <p class="eyebrow">Plan</p>
+        <h1>Set a clear weekly target.</h1>
+        <p class="hero-lede">Use this page only for goals, your current training block, and basic profile settings.</p>
     </div>
-    <div class="training-visual" aria-hidden="true">
-        <div class="training-ring">
-            <span></span>
-            <strong>
-                {% if training_block_progress.has_block %}
-                    {{ training_block_progress.percent_complete }}
-                {% else %}
-                    0
-                {% endif %}
-            </strong>
-            <small>block %</small>
-        </div>
-        <div class="training-bars">
-            <span style="--bar-height: 50%"></span>
-            <span style="--bar-height: 78%"></span>
-            <span style="--bar-height: 62%"></span>
-            <span style="--bar-height: 88%"></span>
-            <span style="--bar-height: 56%"></span>
-            <span style="--bar-height: 72%"></span>
-        </div>
+    <div class="intro-summary">
+        <strong>{{ training_block_progress.percent_complete if training_block_progress.has_block else 0 }}%</strong>
+        <span>block complete</span>
     </div>
 </section>
 
 <section class="metric-grid">
     <article class="metric-tile">
-        <span class="metric-label">Weekly Goal</span>
+        <span class="metric-label">Weekly Minutes</span>
         <strong>{{ goals.weekly_minutes_goal }}</strong>
-        <span class="metric-note">minutes/week baseline</span>
+        <span class="metric-note">goal</span>
     </article>
     <article class="metric-tile">
-        <span class="metric-label">Session Goal</span>
+        <span class="metric-label">Weekly Sessions</span>
         <strong>{{ goals.weekly_sessions_goal }}</strong>
-        <span class="metric-note">sessions/week baseline</span>
+        <span class="metric-note">goal</span>
     </article>
     <article class="metric-tile">
         <span class="metric-label">Block Target</span>
-        <strong>
-            {% if training_block_progress.has_block %}
-                {{ training_block_progress.target_weekly_minutes }}
-            {% else %}
-                --
-            {% endif %}
-        </strong>
-        <span class="metric-note">minutes/week in phase</span>
+        <strong>{{ training_block_progress.target_weekly_minutes if training_block_progress.has_block else '--' }}</strong>
+        <span class="metric-note">minutes/week</span>
     </article>
     <article class="metric-tile">
-        <span class="metric-label">Block History</span>
+        <span class="metric-label">Saved Blocks</span>
         <strong>{{ block_history|length }}</strong>
-        <span class="metric-note">recent saved blocks</span>
+        <span class="metric-note">recent history</span>
     </article>
 </section>
 
@@ -75,14 +40,10 @@
     <section class="panel panel-wide panel-accent">
         <div class="panel-header">
             <div>
-                <p class="section-kicker">Periodization</p>
+                <p class="section-kicker">Training Block</p>
                 <h2>Current Training Block</h2>
             </div>
-            {% if training_block_progress.has_block %}
-                <span class="pill">{{ training_block_progress.status_label }}</span>
-            {% else %}
-                <span class="pill">Not set</span>
-            {% endif %}
+            <span class="pill">{{ training_block_progress.status_label if training_block_progress.has_block else 'Not set' }}</span>
         </div>
 
         <form method="post" action="{{ url_for('workouts.update_training_block') }}">
@@ -95,16 +56,8 @@
             {% endif %}
             <div class="field-row">
                 <div class="field field-full">
-                    <label for="block_name">Block Name</label>
-                    <input
-                        type="text"
-                        id="block_name"
-                        name="block_name"
-                        maxlength="60"
-                        placeholder="Base Build"
-                        value="{{ (block_form.block_name if block_form else '') or '' }}"
-                        required
-                    >
+                    <label for="block_name">Name</label>
+                    <input type="text" id="block_name" name="block_name" maxlength="60" placeholder="Base Build" value="{{ (block_form.block_name if block_form else '') or '' }}" required>
                 </div>
             </div>
             <div class="field-row">
@@ -113,102 +66,49 @@
                     <select id="training_focus" name="training_focus" required>
                         {% set selected_focus = block_form.training_focus if block_form else '' %}
                         {% for value, label in training_focus_options %}
-                            <option value="{{ value }}" {% if selected_focus == value %}selected{% endif %}>
-                                {{ label }}
-                            </option>
+                            <option value="{{ value }}" {% if selected_focus == value %}selected{% endif %}>{{ label }}</option>
                         {% endfor %}
                     </select>
                 </div>
                 <div class="field">
                     <label for="target_effort">Effort Target</label>
-                    <input
-                        type="number"
-                        id="target_effort"
-                        name="target_effort"
-                        min="1"
-                        max="10"
-                        placeholder="1-10"
-                        value="{{ block_form.target_effort if block_form and block_form.target_effort is not none else '' }}"
-                    >
+                    <input type="number" id="target_effort" name="target_effort" min="1" max="10" placeholder="1-10" value="{{ block_form.target_effort if block_form and block_form.target_effort is not none else '' }}">
                 </div>
             </div>
             <div class="field-row">
                 <div class="field">
                     <label for="start_date">Start</label>
-                    <input
-                        type="date"
-                        id="start_date"
-                        name="start_date"
-                        value="{{ (block_form.start_date if block_form else '') or '' }}"
-                        required
-                    >
+                    <input type="date" id="start_date" name="start_date" value="{{ (block_form.start_date if block_form else '') or '' }}" required>
                 </div>
                 <div class="field">
                     <label for="end_date">End</label>
-                    <input
-                        type="date"
-                        id="end_date"
-                        name="end_date"
-                        value="{{ (block_form.end_date if block_form else '') or '' }}"
-                        required
-                    >
+                    <input type="date" id="end_date" name="end_date" value="{{ (block_form.end_date if block_form else '') or '' }}" required>
                 </div>
             </div>
             <div class="field-row">
                 <div class="field">
-                    <label for="target_weekly_minutes">Minutes</label>
-                    <input
-                        type="number"
-                        id="target_weekly_minutes"
-                        name="target_weekly_minutes"
-                        min="30"
-                        max="900"
-                        value="{{ (block_form.target_weekly_minutes if block_form else '') or '' }}"
-                        required
-                    >
+                    <label for="target_weekly_minutes">Weekly Minutes</label>
+                    <input type="number" id="target_weekly_minutes" name="target_weekly_minutes" min="30" max="900" value="{{ (block_form.target_weekly_minutes if block_form else '') or '' }}" required>
                 </div>
                 <div class="field">
-                    <label for="target_weekly_sessions">Sessions</label>
-                    <input
-                        type="number"
-                        id="target_weekly_sessions"
-                        name="target_weekly_sessions"
-                        min="1"
-                        max="14"
-                        value="{{ (block_form.target_weekly_sessions if block_form else '') or '' }}"
-                        required
-                    >
+                    <label for="target_weekly_sessions">Weekly Sessions</label>
+                    <input type="number" id="target_weekly_sessions" name="target_weekly_sessions" min="1" max="14" value="{{ (block_form.target_weekly_sessions if block_form else '') or '' }}" required>
                 </div>
             </div>
             <div class="field-row">
                 <div class="field field-full">
                     <label for="block_notes">Notes</label>
-                    <textarea
-                        id="block_notes"
-                        name="notes"
-                        rows="3"
-                        maxlength="300"
-                        placeholder="Focus cues, constraints, next test."
-                    >{{ (block_form.notes if block_form else '') or '' }}</textarea>
+                    <textarea id="block_notes" name="notes" rows="3" maxlength="300" placeholder="Optional focus cues.">{{ (block_form.notes if block_form else '') or '' }}</textarea>
                 </div>
             </div>
             <div class="btn-row">
-                <button type="submit" name="save_mode" value="update" class="btn btn-primary">
-                    Save Current Block
-                </button>
-                <button type="submit" name="save_mode" value="new" class="btn btn-ghost">
-                    Save as New Block
-                </button>
+                <button type="submit" name="save_mode" value="update" class="btn btn-primary">Save Block</button>
+                <button type="submit" name="save_mode" value="new" class="btn btn-ghost">Save as New</button>
             </div>
         </form>
         {% if training_block_progress.has_block %}
-            <form
-                method="post"
-                action="{{ url_for('workouts.archive_training_block') }}"
-                class="archive-form"
-                onsubmit="return confirm('Archive the current training block?');"
-            >
-                <button type="submit" class="btn btn-danger">Archive Current Block</button>
+            <form method="post" action="{{ url_for('workouts.archive_training_block') }}" class="archive-form" onsubmit="return confirm('Archive the current training block?');">
+                <button type="submit" class="btn btn-danger">Archive Block</button>
             </form>
         {% endif %}
     </section>
@@ -217,8 +117,39 @@
         <section class="panel">
             <div class="panel-header compact">
                 <div>
+                    <p class="section-kicker">Goals</p>
+                    <h2>Weekly Goals</h2>
+                </div>
+            </div>
+            <form method="post" action="{{ url_for('workouts.update_goals') }}">
+                {% if goal_errors %}
+                    <div class="form-alert">
+                        {% for error in goal_errors %}
+                            <div>{{ error }}</div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                <div class="field-row">
+                    <div class="field">
+                        <label for="weekly_minutes_goal">Minutes</label>
+                        <input type="number" id="weekly_minutes_goal" name="weekly_minutes_goal" min="30" max="600" value="{{ (goal_form.weekly_minutes_goal if goal_form else '') or '' }}" required>
+                    </div>
+                    <div class="field">
+                        <label for="weekly_sessions_goal">Sessions</label>
+                        <input type="number" id="weekly_sessions_goal" name="weekly_sessions_goal" min="1" max="14" value="{{ (goal_form.weekly_sessions_goal if goal_form else '') or '' }}" required>
+                    </div>
+                </div>
+                <div class="btn-row">
+                    <button type="submit" class="btn btn-ghost">Save Goals</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="panel">
+            <div class="panel-header compact">
+                <div>
                     <p class="section-kicker">Profile</p>
-                    <h2>Comparison Cohort</h2>
+                    <h2>Basic Profile</h2>
                 </div>
             </div>
             <form method="post" action="{{ url_for('workouts.update_profile') }}">
@@ -232,14 +163,7 @@
                 <div class="field-row">
                     <div class="field">
                         <label for="age">Age</label>
-                        <input
-                            type="number"
-                            id="age"
-                            name="age"
-                            min="10"
-                            max="90"
-                            value="{{ (profile_form.age if profile_form else '') or '' }}"
-                        >
+                        <input type="number" id="age" name="age" min="10" max="90" value="{{ (profile_form.age if profile_form else '') or '' }}">
                     </div>
                     <div class="field">
                         <label for="gender">Gender</label>
@@ -256,53 +180,6 @@
                 </div>
             </form>
         </section>
-
-        <section class="panel">
-            <div class="panel-header compact">
-                <div>
-                    <p class="section-kicker">Goals</p>
-                    <h2>Weekly Baseline</h2>
-                </div>
-            </div>
-            <form method="post" action="{{ url_for('workouts.update_goals') }}">
-                {% if goal_errors %}
-                    <div class="form-alert">
-                        {% for error in goal_errors %}
-                            <div>{{ error }}</div>
-                        {% endfor %}
-                    </div>
-                {% endif %}
-                <div class="field-row">
-                    <div class="field">
-                        <label for="weekly_minutes_goal">Minutes</label>
-                        <input
-                            type="number"
-                            id="weekly_minutes_goal"
-                            name="weekly_minutes_goal"
-                            min="30"
-                            max="600"
-                            value="{{ (goal_form.weekly_minutes_goal if goal_form else '') or '' }}"
-                            required
-                        >
-                    </div>
-                    <div class="field">
-                        <label for="weekly_sessions_goal">Sessions</label>
-                        <input
-                            type="number"
-                            id="weekly_sessions_goal"
-                            name="weekly_sessions_goal"
-                            min="1"
-                            max="14"
-                            value="{{ (goal_form.weekly_sessions_goal if goal_form else '') or '' }}"
-                            required
-                        >
-                    </div>
-                </div>
-                <div class="btn-row">
-                    <button type="submit" class="btn btn-ghost">Save Goals</button>
-                </div>
-            </form>
-        </section>
     </aside>
 </div>
 
@@ -310,27 +187,26 @@
     <div class="panel-header">
         <div>
             <p class="section-kicker">History</p>
-            <h2>Training Blocks</h2>
+            <h2>Training Block History</h2>
         </div>
         <span class="pill">{{ block_history|length }} shown</span>
     </div>
     {% if block_history %}
-        <div class="record-grid">
+        <div class="history-list">
             {% for block in block_history %}
-                <article class="record-card">
-                    <span>{{ block.status_label }}</span>
-                    <strong>{{ block.block_name }}</strong>
-                    <p>
-                        {{ block.focus_label }} / {{ block.start_date }} to {{ block.end_date }}
-                        / {{ block.target_weekly_minutes }} min
-                    </p>
+                <article class="history-item">
+                    <div class="history-main">
+                        <strong>{{ block.block_name }}</strong>
+                        <span>{{ block.focus_label }} · {{ block.start_date }} to {{ block.end_date }} · {{ block.target_weekly_minutes }} min/week</span>
+                    </div>
+                    <span class="pill">{{ block.status_label }}</span>
                 </article>
             {% endfor %}
         </div>
     {% else %}
         <div class="empty-panel">
             <strong>No training blocks saved yet.</strong>
-            <span>Save a current block to start building history.</span>
+            <span>Save a block to start building history.</span>
         </div>
     {% endif %}
 </section>

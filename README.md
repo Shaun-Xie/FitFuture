@@ -19,19 +19,19 @@ The app includes a demo user for quick exploration, while registration allows ne
 - Weekly goal setting for training minutes and session count.
 - Current training block planning with focus, dates, weekly load targets, and target effort.
 - Training block history with archive/start-new behavior for completed phases.
-- Personal-record cards for longest session, peak effort, best week, streak, and total sessions.
-- Workout session logging with date, time, duration, perceived intensity, recovery rating, sleep hours, source, and notes.
+- Personal-record cards for longest session, peak effort, and recent training streaks.
+- Simple workout logging with date, duration, perceived intensity, recovery rating, sleep hours, and notes.
 - Editable user profile for age and gender based cohort comparisons.
-- Filterable workout ledger with dashboard metrics for volume, session count, duration, and intensity.
+- Clear workout history with dashboard metrics for volume, session count, duration, and intensity.
 - 30-day fitness summary with weekly training volume, average session duration, and simple score projection.
 - 8-week training trend analysis with weekly minutes, sessions, active days, best week, and consistency rate.
 - Streak history with recent active-week rhythm, active-day streak, and longest daily run.
 - Intensity-zone breakdown across recovery, base, hard, and peak training sessions.
 - Recovery readiness analytics based on logged recovery scores, sleep hours, and high-effort risk flags.
 - Recommendation cards that adapt to recent volume, block pace, intensity, consistency, and recovery signals.
-- Population comparisons using public Kaggle datasets.
+- Population comparisons using public Kaggle datasets behind streamlined analytics charts.
 - Separate Workouts, Plan, and Analytics pages to keep daily logging, planning, and analysis focused.
-- Responsive dark fitness-dashboard UI built with Flask templates, CSS, and Chart.js.
+- Responsive, minimal UI built with Flask templates, CSS, and Chart.js.
 
 ## Tech stack
 

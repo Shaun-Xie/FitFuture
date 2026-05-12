@@ -201,7 +201,7 @@ def test_goal_progress_and_personal_records(client):
     user_goals = goals.get_user_goals(user["user_id"])
 
     today = date.today()
-    insert_workout(user["user_id"], today - timedelta(days=1), 45, 6)
+    insert_workout(user["user_id"], today, 45, 6)
     insert_workout(user["user_id"], today, 75, 9)
 
     insights = analytics.build_training_insights(user["user_id"])
