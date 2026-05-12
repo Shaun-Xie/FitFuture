@@ -5,380 +5,46 @@
 {% endblock %}
 
 {% block content %}
-<section class="dashboard-hero hero-analytics">
-    <div class="hero-copy">
-        <p class="eyebrow">FitFuture Analytics Lab</p>
-        <h1>Benchmark your training against population-level signals.</h1>
-        <p class="hero-lede">
-            Turn recent sessions into volume, percentile, and projection reads.
-        </p>
-        <div class="hero-meta">
-            {% if fitness_summary and fitness_summary.has_data %}
-                <span>{{ fitness_summary.weekly_minutes|round(0) }} min/week</span>
-                <span>{{ fitness_summary.avg_duration|round(0) }} min avg session</span>
-                {% if training_insights.avg_recovery_rating is not none %}
-                    <span>{{ training_insights.avg_recovery_rating|round(1) }}/5 readiness</span>
-                {% else %}
-                    <span>{{ training_insights.active_days }} active days</span>
-                {% endif %}
-            {% else %}
-                <span>Awaiting workout data</span>
-                <span>30-day analysis window</span>
-            {% endif %}
-        </div>
+<section class="page-intro">
+    <div>
+        <p class="eyebrow">Analytics</p>
+        <h1>See the basics at a glance.</h1>
+        <p class="hero-lede">Quick progress, consistency, recovery, and trend charts without extra clutter.</p>
     </div>
-    <div class="analytics-visual" aria-hidden="true">
-        <div class="score-orbit">
-            <strong>
-                {% if fitness_summary and fitness_summary.has_data %}
-                    {{ fitness_summary.current_score|round(1) }}
-                {% else %}
-                    0.0
-                {% endif %}
-            </strong>
-            <span>score</span>
-        </div>
-        <div class="projection-line">
-            <span></span>
-            <span></span>
-            <span></span>
-            <span></span>
-        </div>
+    <div class="intro-summary">
+        <strong>{{ goal_progress.minutes_percent }}%</strong>
+        <span>weekly minutes goal</span>
     </div>
 </section>
 
 <section class="metric-grid">
     <article class="metric-tile">
         <span class="metric-label">Goal Progress</span>
-        <strong>
-            {{ goal_progress.minutes_percent }}%
-        </strong>
-        <span class="metric-note">
-            {{ goal_progress.current_week_minutes }} / {{ goal_progress.weekly_minutes_goal }} min
-        </span>
+        <strong>{{ goal_progress.minutes_percent }}%</strong>
+        <span class="metric-note">{{ goal_progress.current_week_minutes }} / {{ goal_progress.weekly_minutes_goal }} min</span>
     </article>
     <article class="metric-tile">
         <span class="metric-label">Consistency</span>
-        <strong>
-            {{ training_insights.consistency_rate|round(0) }}
-        </strong>
-        <span class="metric-note">percent of last 8 weeks</span>
+        <strong>{{ training_insights.consistency_rate|round(0) }}%</strong>
+        <span class="metric-note">active weeks in trend</span>
     </article>
     <article class="metric-tile">
-        <span class="metric-label">Recovery Avg</span>
-        <strong>
-            {% if training_insights.avg_recovery_rating is not none %}
-                {{ training_insights.avg_recovery_rating|round(1) }}
-            {% else %}
-                --
-            {% endif %}
-        </strong>
-        <span class="metric-note">
-            {% if training_insights.recovery_samples %}
-                out of 5 across {{ training_insights.recovery_samples }} logs
-            {% else %}
-                add recovery scores
-            {% endif %}
-        </span>
+        <span class="metric-label">Recovery</span>
+        <strong>{{ training_insights.avg_recovery_rating|round(1) if training_insights.avg_recovery_rating is not none else '--' }}</strong>
+        <span class="metric-note">average out of 5</span>
     </article>
     <article class="metric-tile">
-        <span class="metric-label">Sleep Avg</span>
-        <strong>
-            {% if training_insights.avg_sleep_hours is not none %}
-                {{ training_insights.avg_sleep_hours|round(1) }}
-            {% else %}
-                --
-            {% endif %}
-        </strong>
-        <span class="metric-note">
-            {% if training_insights.sleep_samples %}
-                hours across {{ training_insights.sleep_samples }} logs
-            {% else %}
-                add sleep hours
-            {% endif %}
-        </span>
+        <span class="metric-label">Sleep</span>
+        <strong>{{ training_insights.avg_sleep_hours|round(1) if training_insights.avg_sleep_hours is not none else '--' }}</strong>
+        <span class="metric-note">average hours</span>
     </article>
-</section>
-
-<section class="panel recommendation-panel">
-    <div class="panel-header">
-        <div>
-            <p class="section-kicker">Streak History</p>
-            <h2>Recent Training Rhythm</h2>
-        </div>
-        <span class="pill">{{ training_insights.active_week_streak }} week streak</span>
-    </div>
-    <div class="streak-summary">
-        <article>
-            <span>Active Days</span>
-            <strong>{{ training_insights.active_days }}</strong>
-            <p>days with workouts in the trend window</p>
-        </article>
-        <article>
-            <span>Day Streak</span>
-            <strong>{{ training_insights.active_day_streak }}</strong>
-            <p>consecutive training days through today or yesterday</p>
-        </article>
-        <article>
-            <span>Best Daily Run</span>
-            <strong>{{ training_insights.longest_day_streak }}</strong>
-            <p>longest consecutive-day run in this window</p>
-        </article>
-    </div>
-    <div class="streak-timeline">
-        {% for week in training_insights.weekly_history %}
-            <div class="streak-week {% if week.is_active %}streak-week-active{% endif %}">
-                <span>{{ week.label }}</span>
-                <strong>{{ week.sessions }}</strong>
-                <small>{{ week.minutes }}m</small>
-            </div>
-        {% endfor %}
-    </div>
-</section>
-
-<section class="panel recommendation-panel">
-    <div class="panel-header">
-        <div>
-            <p class="section-kicker">Periodization</p>
-            <h2>Current Training Block</h2>
-        </div>
-        {% if training_block_progress.has_block %}
-            <span class="pill">{{ training_block_progress.status_label }}</span>
-        {% else %}
-            <span class="pill">No block set</span>
-        {% endif %}
-    </div>
-    {% if training_block_progress.has_block %}
-        <div class="record-grid">
-            <article class="record-card">
-                <span>{{ training_block_progress.focus_label }}</span>
-                <strong>{{ training_block_progress.block_name }}</strong>
-                <p>{{ training_block_progress.start_date }} to {{ training_block_progress.end_date }}</p>
-            </article>
-            <article class="record-card">
-                <span>Timeline</span>
-                <strong>{{ training_block_progress.percent_complete }}%</strong>
-                <p>
-                    {% if training_block_progress.status == 'planned' %}
-                        Starts in {{ training_block_progress.days_until_start }} days
-                    {% elif training_block_progress.status == 'complete' %}
-                        Block complete
-                    {% else %}
-                        {{ training_block_progress.days_remaining }} days remaining
-                    {% endif %}
-                </p>
-            </article>
-            <article class="record-card">
-                <span>Weekly Pace</span>
-                <strong>{{ training_block_progress.current_week_minutes_percent }}%</strong>
-                <p>
-                    {{ training_block_progress.current_week_minutes }} /
-                    {{ training_block_progress.target_weekly_minutes }} min this week
-                </p>
-            </article>
-            <article class="record-card">
-                <span>Effort Target</span>
-                <strong>
-                    {% if training_block_progress.target_effort %}
-                        {{ training_block_progress.target_effort }}/10
-                    {% else %}
-                        --
-                    {% endif %}
-                </strong>
-                <p>
-                    {% if training_block_progress.current_week_avg_intensity is not none %}
-                        Current week {{ training_block_progress.current_week_avg_intensity|round(1) }}/10
-                    {% else %}
-                        Add effort scores to compare.
-                    {% endif %}
-                </p>
-            </article>
-        </div>
-    {% else %}
-        <div class="empty-panel">
-            <strong>No training block yet.</strong>
-            <span>Create one from the workout dashboard to tie progress to a planned phase.</span>
-        </div>
-    {% endif %}
-</section>
-
-<section class="panel recommendation-panel">
-    <div class="panel-header">
-        <div>
-            <p class="section-kicker">Milestones</p>
-            <h2>Personal Records</h2>
-        </div>
-        <span class="pill">{{ personal_records.total_sessions }} total sessions</span>
-    </div>
-    <div class="record-grid">
-        <article class="record-card">
-            <span>Longest Session</span>
-            <strong>
-                {% if personal_records.longest_session_minutes %}
-                    {{ personal_records.longest_session_minutes }} min
-                {% else %}
-                    --
-                {% endif %}
-            </strong>
-            <p>{{ personal_records.longest_session_date or 'Log a duration to set this record.' }}</p>
-        </article>
-        <article class="record-card">
-            <span>Peak Effort</span>
-            <strong>
-                {% if personal_records.highest_effort %}
-                    {{ personal_records.highest_effort }}/10
-                {% else %}
-                    --
-                {% endif %}
-            </strong>
-            <p>{{ personal_records.highest_effort_date or 'Add effort scores to unlock this.' }}</p>
-        </article>
-        <article class="record-card">
-            <span>Best Week</span>
-            <strong>{{ personal_records.best_week_minutes|round(0) }} min</strong>
-            <p>{{ personal_records.active_week_streak }} active-week streak</p>
-        </article>
-        <article class="record-card">
-            <span>Session Goal</span>
-            <strong>{{ goal_progress.sessions_percent }}%</strong>
-            <p>
-                {{ goal_progress.current_week_sessions }} / {{ goal_progress.weekly_sessions_goal }}
-                sessions this week
-            </p>
-        </article>
-    </div>
-</section>
-
-<div class="analytics-layout">
-    <section class="panel panel-wide">
-        <div class="panel-header">
-            <div>
-                <p class="section-kicker">Comparison Engine</p>
-                <h2>You vs Population</h2>
-            </div>
-            {% if fitness_summary and fitness_summary.cohort_label %}
-                <span class="pill">{{ fitness_summary.cohort_label }}</span>
-            {% else %}
-                <span class="pill">General baseline</span>
-            {% endif %}
-        </div>
-
-        {% if fitness_summary and fitness_summary.has_data %}
-            <div class="insight-grid">
-                <article class="insight-card">
-                    <span class="insight-label">Training Snapshot</span>
-                    <strong>{{ fitness_summary.total_minutes_30d|round(0) }} min</strong>
-                    <p>Last 30 days of tracked workout volume.</p>
-                </article>
-                <article class="insight-card">
-                    <span class="insight-label">Best Week</span>
-                    <strong>{{ training_insights.best_week_minutes|round(0) }} min</strong>
-                    <p>
-                        Strongest week in the current trend window
-                        {% if training_insights.best_week_label %}starting {{ training_insights.best_week_label }}{% endif %}.
-                    </p>
-                </article>
-                <article class="insight-card">
-                    <span class="insight-label">Exercise Percentile</span>
-                    <strong>
-                        {% if fitness_summary.hf365_percentile is defined and fitness_summary.hf365_percentile is not none %}
-                            {{ fitness_summary.hf365_percentile|round(0) }}th
-                        {% else %}
-                            --
-                        {% endif %}
-                    </strong>
-                    <p>Daily exercise minutes against the 365-day dataset.</p>
-                </article>
-                <article class="insight-card">
-                    <span class="insight-label">Session Percentile</span>
-                    <strong>
-                        {% if fitness_summary.gym_percentile is defined and fitness_summary.gym_percentile is not none %}
-                            {{ fitness_summary.gym_percentile|round(0) }}th
-                        {% else %}
-                            --
-                        {% endif %}
-                    </strong>
-                    <p>Average workout length against gym-session data.</p>
-                </article>
-            </div>
-        {% else %}
-            <div class="empty-panel">
-                <strong>No recent workouts yet.</strong>
-                <span>Analytics populate after sessions exist in the 30-day window.</span>
-            </div>
-        {% endif %}
-    </section>
-
-    <section class="panel">
-        <div class="panel-header compact">
-            <div>
-                <p class="section-kicker">Data Sources</p>
-                <h2>Population Baselines</h2>
-            </div>
-        </div>
-        {% if external_stats %}
-            <div class="dataset-list">
-                {% for key, ds in external_stats.items() %}
-                    {% if ds.exists %}
-                    <article class="dataset-item">
-                        <div>
-                            <strong>{{ ds.name }}</strong>
-                            <span>{{ ds.num_rows }} rows / {{ ds.num_cols }} columns</span>
-                        </div>
-                        <dl>
-                            {% if ds.avg_steps is defined %}
-                                <div><dt>Steps</dt><dd>{{ ds.avg_steps|round(0) }}</dd></div>
-                            {% endif %}
-                            {% if ds.avg_exercise_minutes is defined %}
-                                <div><dt>Exercise</dt><dd>{{ ds.avg_exercise_minutes|round(1) }}m</dd></div>
-                            {% endif %}
-                            {% if ds.avg_session_hours is defined %}
-                                <div><dt>Gym</dt><dd>{{ ds.avg_session_hours|round(2) }}h</dd></div>
-                            {% endif %}
-                            {% if ds.avg_sleep_hours is defined %}
-                                <div><dt>Sleep</dt><dd>{{ ds.avg_sleep_hours|round(1) }}h</dd></div>
-                            {% endif %}
-                            {% if ds.avg_resting_hr is defined %}
-                                <div><dt>RHR</dt><dd>{{ ds.avg_resting_hr|round(1) }}</dd></div>
-                            {% endif %}
-                        </dl>
-                    </article>
-                    {% endif %}
-                {% endfor %}
-            </div>
-        {% else %}
-            <div class="empty-panel">
-                <strong>No CSV baselines found.</strong>
-                <span>Dataset cards appear when source files are present.</span>
-            </div>
-        {% endif %}
-    </section>
-</div>
-
-<section class="panel recommendation-panel">
-    <div class="panel-header">
-        <div>
-            <p class="section-kicker">Training Guidance</p>
-            <h2>Next Best Moves</h2>
-        </div>
-        <span class="pill">{{ recommendations|length }} recommendations</span>
-    </div>
-    <div class="recommendation-grid">
-        {% for recommendation in recommendations %}
-            <article class="recommendation-card">
-                <span>{{ recommendation.label }}</span>
-                <strong>{{ recommendation.title }}</strong>
-                <p>{{ recommendation.body }}</p>
-            </article>
-        {% endfor %}
-    </div>
 </section>
 
 <section class="panel chart-panel">
     <div class="panel-header">
         <div>
-            <p class="section-kicker">Visual Readout</p>
-            <h2>Training Trends and Comparisons</h2>
+            <p class="section-kicker">Trends</p>
+            <h2>Training Charts</h2>
         </div>
     </div>
     {% if fitness_summary and fitness_summary.has_data %}
@@ -390,7 +56,7 @@
                 </div>
             </div>
             <div class="chart-card">
-                <label>Exercise Volume Per Day</label>
+                <label>Exercise Volume</label>
                 <div class="chart-container">
                     <canvas id="chartDailyExercise"></canvas>
                 </div>
@@ -402,13 +68,13 @@
                 </div>
             </div>
             <div class="chart-card">
-                <label>Intensity Zone Mix</label>
+                <label>Intensity Mix</label>
                 <div class="chart-container">
                     <canvas id="chartIntensityZones"></canvas>
                 </div>
             </div>
-            <div class="chart-card chart-card-wide">
-                <label>Fitness Score Projection</label>
+            <div class="chart-card">
+                <label>Fitness Score</label>
                 <div class="chart-container">
                     <canvas id="chartFitnessScore"></canvas>
                 </div>
@@ -416,10 +82,88 @@
         </div>
     {% else %}
         <div class="empty-panel">
-            <strong>Charts are waiting for training volume.</strong>
-            <span>Log a few workouts to compare your data against the baselines.</span>
+            <strong>No analytics yet.</strong>
+            <span>Log a few workouts to unlock charts.</span>
         </div>
     {% endif %}
+</section>
+
+<div class="analytics-layout analytics-layout-simple">
+    <section class="panel">
+        <div class="panel-header">
+            <div>
+                <p class="section-kicker">Rhythm</p>
+                <h2>Recent Training</h2>
+            </div>
+            <span class="pill">{{ training_insights.active_week_streak }} week streak</span>
+        </div>
+        <div class="streak-summary">
+            <article>
+                <span>Active Days</span>
+                <strong>{{ training_insights.active_days }}</strong>
+                <p>days with workouts</p>
+            </article>
+            <article>
+                <span>Current Streak</span>
+                <strong>{{ training_insights.active_day_streak }}</strong>
+                <p>training days</p>
+            </article>
+            <article>
+                <span>Best Run</span>
+                <strong>{{ training_insights.longest_day_streak }}</strong>
+                <p>consecutive days</p>
+            </article>
+        </div>
+        <div class="streak-timeline">
+            {% for week in training_insights.weekly_history %}
+                <div class="streak-week {% if week.is_active %}streak-week-active{% endif %}">
+                    <span>{{ week.label }}</span>
+                    <strong>{{ week.sessions }}</strong>
+                    <small>{{ week.minutes }}m</small>
+                </div>
+            {% endfor %}
+        </div>
+    </section>
+
+    <section class="panel">
+        <div class="panel-header">
+            <div>
+                <p class="section-kicker">Records</p>
+                <h2>Personal Bests</h2>
+            </div>
+            <span class="pill">{{ personal_records.total_sessions }} sessions</span>
+        </div>
+        <div class="record-grid record-grid-simple">
+            <article class="record-card">
+                <span>Longest</span>
+                <strong>{{ personal_records.longest_session_minutes ~ ' min' if personal_records.longest_session_minutes else '--' }}</strong>
+                <p>{{ personal_records.longest_session_date or 'No duration yet.' }}</p>
+            </article>
+            <article class="record-card">
+                <span>Peak Effort</span>
+                <strong>{{ personal_records.highest_effort ~ '/10' if personal_records.highest_effort else '--' }}</strong>
+                <p>{{ personal_records.highest_effort_date or 'No effort yet.' }}</p>
+            </article>
+        </div>
+    </section>
+</div>
+
+<section class="panel recommendation-panel">
+    <div class="panel-header">
+        <div>
+            <p class="section-kicker">Guidance</p>
+            <h2>Next Steps</h2>
+        </div>
+    </div>
+    <div class="recommendation-grid">
+        {% for recommendation in recommendations %}
+            <article class="recommendation-card">
+                <span>{{ recommendation.label }}</span>
+                <strong>{{ recommendation.title }}</strong>
+                <p>{{ recommendation.body }}</p>
+            </article>
+        {% endfor %}
+    </div>
 </section>
 {% endblock %}
 

@@ -1,42 +1,15 @@
 {% extends "base.html" %}
 
 {% block content %}
-<section class="dashboard-hero hero-workouts">
-    <div class="hero-copy">
-        <p class="eyebrow">FitFuture Training Console</p>
-        <h1>Build the next block with cleaner workout intelligence.</h1>
-        <p class="hero-lede">
-            Track training volume, intensity, and session notes in one refined workspace.
-        </p>
-        <div class="hero-meta">
-            <span>{{ workout_metrics.session_count }} logged sessions</span>
-            {% if workout_metrics.latest_date %}
-                <span>Latest: {{ workout_metrics.latest_date }}</span>
-            {% else %}
-                <span>Ready for first entry</span>
-            {% endif %}
-        </div>
+<section class="page-intro">
+    <div>
+        <p class="eyebrow">Workouts</p>
+        <h1>Log workouts and review your history.</h1>
+        <p class="hero-lede">A simple view for the details that matter: date, duration, effort, recovery, and notes.</p>
     </div>
-    <div class="training-visual" aria-hidden="true">
-        <div class="training-ring">
-            <span></span>
-            <strong>
-                {% if workout_metrics.avg_intensity %}
-                    {{ workout_metrics.avg_intensity|round(1) }}
-                {% else %}
-                    0.0
-                {% endif %}
-            </strong>
-            <small>avg effort</small>
-        </div>
-        <div class="training-bars">
-            <span style="--bar-height: 42%"></span>
-            <span style="--bar-height: 68%"></span>
-            <span style="--bar-height: 52%"></span>
-            <span style="--bar-height: 86%"></span>
-            <span style="--bar-height: 74%"></span>
-            <span style="--bar-height: 94%"></span>
-        </div>
+    <div class="intro-summary">
+        <strong>{{ workout_metrics.session_count }}</strong>
+        <span>workouts logged</span>
     </div>
 </section>
 
@@ -44,55 +17,92 @@
     <article class="metric-tile">
         <span class="metric-label">Sessions</span>
         <strong>{{ workout_metrics.session_count }}</strong>
-        <span class="metric-note">logged in view</span>
+        <span class="metric-note">total workouts</span>
     </article>
     <article class="metric-tile">
-        <span class="metric-label">Volume</span>
+        <span class="metric-label">Minutes</span>
         <strong>{{ workout_metrics.total_minutes }}</strong>
-        <span class="metric-note">total minutes</span>
+        <span class="metric-note">total time</span>
     </article>
     <article class="metric-tile">
-        <span class="metric-label">Avg Duration</span>
-        <strong>
-            {% if workout_metrics.avg_duration %}
-                {{ workout_metrics.avg_duration|round(0) }}
-            {% else %}
-                --
-            {% endif %}
-        </strong>
-        <span class="metric-note">minutes/session</span>
+        <span class="metric-label">Average</span>
+        <strong>{{ workout_metrics.avg_duration|round(0) if workout_metrics.avg_duration else '--' }}</strong>
+        <span class="metric-note">minutes/workout</span>
     </article>
     <article class="metric-tile">
-        <span class="metric-label">Avg Intensity</span>
-        <strong>
-            {% if workout_metrics.avg_intensity %}
-                {{ workout_metrics.avg_intensity|round(1) }}
-            {% else %}
-                --
-            {% endif %}
-        </strong>
-        <span class="metric-note">out of 10</span>
+        <span class="metric-label">Effort</span>
+        <strong>{{ workout_metrics.avg_intensity|round(1) if workout_metrics.avg_intensity else '--' }}</strong>
+        <span class="metric-note">average out of 10</span>
     </article>
 </section>
 
-<div class="workout-layout">
+<div class="workout-layout workout-layout-simple">
+    <section class="panel panel-accent">
+        <div class="panel-header compact">
+            <div>
+                <p class="section-kicker">{{ 'Edit' if workout else 'Add' }}</p>
+                <h2>{{ 'Edit Workout' if workout else 'Log Workout' }}</h2>
+            </div>
+        </div>
+
+        <form method="post" action="{{ form_action }}">
+            {% if workout_errors %}
+                <div class="form-alert">
+                    {% for error in workout_errors %}
+                        <div>{{ error }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            <div class="field-row">
+                <div class="field">
+                    <label for="workout_date">Date</label>
+                    <input type="date" id="workout_date" name="workout_date" value="{{ (workout_form.workout_date if workout_form else '') or '' }}" required>
+                </div>
+                <div class="field">
+                    <label for="total_duration_minutes">Duration</label>
+                    <input type="number" id="total_duration_minutes" name="total_duration_minutes" min="1" max="600" placeholder="Minutes" value="{{ (workout_form.total_duration_minutes if workout_form else '') or '' }}">
+                </div>
+            </div>
+            <div class="field-row">
+                <div class="field">
+                    <label for="perceived_intensity">Effort</label>
+                    <input type="number" id="perceived_intensity" name="perceived_intensity" min="1" max="10" placeholder="1-10" value="{{ (workout_form.perceived_intensity if workout_form else '') or '' }}">
+                </div>
+                <div class="field">
+                    <label for="recovery_rating">Recovery</label>
+                    <input type="number" id="recovery_rating" name="recovery_rating" min="1" max="5" placeholder="1-5" value="{{ workout_form.recovery_rating if workout_form and workout_form.recovery_rating is not none else '' }}">
+                </div>
+                <div class="field">
+                    <label for="sleep_hours">Sleep</label>
+                    <input type="number" id="sleep_hours" name="sleep_hours" min="0" max="16" step="0.1" placeholder="Hours" value="{{ workout_form.sleep_hours if workout_form and workout_form.sleep_hours is not none else '' }}">
+                </div>
+            </div>
+            <div class="field-row">
+                <div class="field field-full">
+                    <label for="notes">Notes</label>
+                    <textarea id="notes" name="notes" rows="3" placeholder="What did you train? How did it feel?">{{ (workout_form.notes if workout_form else '') or '' }}</textarea>
+                </div>
+            </div>
+            <input type="hidden" name="source" value="{{ (workout_form.source if workout_form else '') or 'manual' }}">
+            <div class="btn-row">
+                <button type="submit" class="btn btn-primary">{{ 'Update Workout' if workout else 'Save Workout' }}</button>
+                {% if workout %}
+                    <a href="{{ url_for('workouts.index') }}" class="btn btn-ghost">Cancel</a>
+                {% endif %}
+            </div>
+        </form>
+    </section>
+
     <section class="panel panel-wide">
         <div class="panel-header">
             <div>
-                <p class="section-kicker">Workout Log</p>
-                <h2>Session Ledger</h2>
+                <p class="section-kicker">History</p>
+                <h2>Workout History</h2>
             </div>
-            <span class="pill">
-                <span class="pill-dot"></span>
-                {% if workout_metrics.active_filter_count %}
-                    {{ workout_metrics.active_filter_count }} filters
-                {% else %}
-                    Live log
-                {% endif %}
-            </span>
+            <span class="pill">{{ workout_metrics.active_filter_count or 0 }} filters</span>
         </div>
 
-        <form method="get" action="{{ url_for('workouts.index') }}" class="toolbar-form">
+        <form method="get" action="{{ url_for('workouts.index') }}" class="toolbar-form simple-filter">
             <div class="field-row filters-row">
                 <div class="field">
                     <label for="min_date">From</label>
@@ -102,323 +112,58 @@
                     <label for="max_date">To</label>
                     <input type="date" id="max_date" name="max_date" value="{{ filters.max_date }}">
                 </div>
-                <div class="field">
-                    <label for="min_intensity">Minimum Effort</label>
-                    <input
-                        type="number"
-                        id="min_intensity"
-                        name="min_intensity"
-                        min="1"
-                        max="10"
-                        value="{{ filters.min_intensity }}"
-                    >
-                </div>
                 <div class="toolbar-actions">
-                    <button type="submit" class="btn btn-primary">Apply</button>
+                    <button type="submit" class="btn btn-ghost">Filter</button>
                     <a class="btn btn-ghost" href="{{ url_for('workouts.index') }}">Clear</a>
                 </div>
             </div>
         </form>
 
-        <div class="table-wrap">
-            <table>
-                <thead>
-                <tr>
-                    <th>ID</th>
-                    <th>Session</th>
-                    <th>Duration</th>
-                    <th>Intensity</th>
-                    <th>Recovery</th>
-                    <th>Source</th>
-                    <th>Notes</th>
-                    <th class="actions-heading">Actions</th>
-                </tr>
-                </thead>
-                <tbody>
-                {% for w in workouts %}
-                    {% set intensity = w.perceived_intensity or 0 %}
-                    {% if intensity >= 9 %}
-                        {% set intensity_class = 'badge-intensity badge-intensity-max' %}
-                    {% elif intensity >= 7 %}
-                        {% set intensity_class = 'badge-intensity badge-intensity-high' %}
-                    {% elif intensity >= 4 %}
-                        {% set intensity_class = 'badge-intensity badge-intensity-mid' %}
-                    {% elif intensity >= 1 %}
-                        {% set intensity_class = 'badge-intensity badge-intensity-low' %}
-                    {% else %}
-                        {% set intensity_class = 'muted' %}
-                    {% endif %}
-
-                    <tr>
-                        <td><span class="row-id">#{{ w.workout_id }}</span></td>
-                        <td>
-                            <div class="date-stack">
-                                <strong>{{ w.workout_date }}</strong>
-                                {% if w.start_time or w.end_time %}
-                                    <span>
-                                        {{ w.start_time if w.start_time else 'Start open' }}
-                                        {% if w.end_time %} - {{ w.end_time }}{% endif %}
-                                    </span>
-                                {% else %}
-                                    <span>Time not set</span>
-                                {% endif %}
-                            </div>
-                        </td>
-                        <td>
-                            {% if w.total_duration_minutes %}
-                                <span class="duration-chip">{{ w.total_duration_minutes }} min</span>
-                            {% else %}
-                                <span class="muted">--</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if w.perceived_intensity %}
-                                <span class="{{ intensity_class }}">
-                                    <span></span>
-                                    {{ w.perceived_intensity }}/10
-                                </span>
-                            {% else %}
-                                <span class="muted">--</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if w.recovery_rating is not none or w.sleep_hours is not none %}
-                                <div class="recovery-stack">
-                                    {% if w.recovery_rating is not none %}
-                                        <span class="recovery-chip">{{ w.recovery_rating }}/5 ready</span>
-                                    {% endif %}
-                                    {% if w.sleep_hours is not none %}
-                                        <span>{{ w.sleep_hours|round(1) }}h sleep</span>
-                                    {% endif %}
-                                </div>
-                            {% else %}
-                                <span class="muted">--</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            {% if w.source %}
-                                <span class="chip-src">
-                                    <span class="chip-src-dot"></span>{{ w.source }}
-                                </span>
-                            {% else %}
-                                <span class="pill-small">unspecified</span>
-                            {% endif %}
-                        </td>
-                        <td class="notes-cell">
-                            {% if w.notes %}
-                                {{ w.notes }}
-                            {% else %}
-                                <span class="muted">No notes</span>
-                            {% endif %}
-                        </td>
-                        <td>
-                            <div class="actions-cell">
-                                <a
-                                    class="btn btn-ghost btn-compact"
-                                    href="{{ url_for('workouts.edit_workout', workout_id=w.workout_id) }}"
-                                >
-                                    Edit
-                                </a>
-                                <form
-                                    method="post"
-                                    action="{{ url_for('workouts.delete_workout', workout_id=w.workout_id) }}"
-                                    onsubmit="return confirm('Delete this workout?');"
-                                >
-                                    <button type="submit" class="btn btn-danger btn-compact">
-                                        Delete
-                                    </button>
-                                </form>
-                            </div>
-                        </td>
-                    </tr>
-                {% endfor %}
-                {% if workouts|length == 0 %}
-                    <tr>
-                        <td colspan="8" class="empty-row">
-                            No workouts match this view.
-                        </td>
-                    </tr>
+        <div class="history-list">
+            {% for w in workouts %}
+                {% set intensity = w.perceived_intensity or 0 %}
+                {% if intensity >= 9 %}
+                    {% set intensity_class = 'badge-intensity badge-intensity-max' %}
+                {% elif intensity >= 7 %}
+                    {% set intensity_class = 'badge-intensity badge-intensity-high' %}
+                {% elif intensity >= 4 %}
+                    {% set intensity_class = 'badge-intensity badge-intensity-mid' %}
+                {% elif intensity >= 1 %}
+                    {% set intensity_class = 'badge-intensity badge-intensity-low' %}
+                {% else %}
+                    {% set intensity_class = 'muted' %}
                 {% endif %}
-                </tbody>
-            </table>
-        </div>
-    </section>
-
-    <aside class="side-stack">
-        <section class="panel">
-            <div class="panel-header compact">
-                <div>
-                    <p class="section-kicker">Plan Snapshot</p>
-                    <h2>Current Block</h2>
-                </div>
-                {% if training_block_progress.has_block %}
-                    <span class="pill">{{ training_block_progress.status_label }}</span>
-                {% endif %}
-            </div>
-            {% if training_block_progress.has_block %}
-                <div class="mini-stat-grid">
-                    <div>
-                        <span>Focus</span>
-                        <strong>{{ training_block_progress.focus_label }}</strong>
+                <article class="history-item">
+                    <div class="history-main">
+                        <strong>{{ w.workout_date }}</strong>
+                        <span>
+                            {{ w.total_duration_minutes or '--' }} min
+                            {% if w.perceived_intensity %} · {{ w.perceived_intensity }}/10 effort{% endif %}
+                            {% if w.recovery_rating is not none %} · {{ w.recovery_rating }}/5 recovery{% endif %}
+                            {% if w.sleep_hours is not none %} · {{ w.sleep_hours|round(1) }}h sleep{% endif %}
+                        </span>
+                        {% if w.notes %}
+                            <p>{{ w.notes }}</p>
+                        {% endif %}
                     </div>
-                    <div>
-                        <span>Timeline</span>
-                        <strong>{{ training_block_progress.percent_complete }}%</strong>
+                    <div class="history-actions">
+                        {% if w.perceived_intensity %}
+                            <span class="{{ intensity_class }}"><span></span>{{ w.perceived_intensity }}/10</span>
+                        {% endif %}
+                        <a class="btn btn-ghost btn-compact" href="{{ url_for('workouts.edit_workout', workout_id=w.workout_id) }}">Edit</a>
+                        <form method="post" action="{{ url_for('workouts.delete_workout', workout_id=w.workout_id) }}" onsubmit="return confirm('Delete this workout?');">
+                            <button type="submit" class="btn btn-danger btn-compact">Delete</button>
+                        </form>
                     </div>
-                </div>
-                <div class="btn-row">
-                    <a href="{{ url_for('workouts.plan') }}" class="btn btn-ghost">Manage Plan</a>
-                </div>
-            {% else %}
-                <div class="empty-panel empty-panel-compact">
-                    <strong>No block set.</strong>
-                    <span>Move planning, goals, and profile setup into the Plan page.</span>
-                </div>
-                <div class="btn-row">
-                    <a href="{{ url_for('workouts.plan') }}" class="btn btn-primary">Create Plan</a>
+                </article>
+            {% endfor %}
+            {% if workouts|length == 0 %}
+                <div class="empty-panel">
+                    <strong>No workouts found.</strong>
+                    <span>Log a workout or clear filters to see your history.</span>
                 </div>
             {% endif %}
-        </section>
-
-        <section class="panel panel-accent">
-            <div class="panel-header compact">
-                <div>
-                    <p class="section-kicker">{{ 'Edit Mode' if workout else 'Quick Capture' }}</p>
-                    <h2>{{ 'Edit Workout' if workout else 'Log Workout' }}</h2>
-                </div>
-            </div>
-
-            <form method="post" action="{{ form_action }}">
-                {% if workout_errors %}
-                    <div class="form-alert">
-                        {% for error in workout_errors %}
-                            <div>{{ error }}</div>
-                        {% endfor %}
-                    </div>
-                {% endif %}
-                <div class="field-row">
-                    <div class="field">
-                        <label for="workout_date">Date</label>
-                        <input
-                            type="date"
-                            id="workout_date"
-                            name="workout_date"
-                            value="{{ (workout_form.workout_date if workout_form else '') or '' }}"
-                            required
-                        >
-                    </div>
-                </div>
-
-                <div class="field-row">
-                    <div class="field">
-                        <label for="start_time">Start</label>
-                        <input
-                            type="time"
-                            id="start_time"
-                            name="start_time"
-                            value="{{ (workout_form.start_time if workout_form else '') or '' }}"
-                        >
-                    </div>
-                    <div class="field">
-                        <label for="end_time">End</label>
-                        <input
-                            type="time"
-                            id="end_time"
-                            name="end_time"
-                            value="{{ (workout_form.end_time if workout_form else '') or '' }}"
-                        >
-                    </div>
-                </div>
-
-                <div class="field-row">
-                    <div class="field">
-                        <label for="total_duration_minutes">Duration</label>
-                        <input
-                            type="number"
-                            id="total_duration_minutes"
-                            name="total_duration_minutes"
-                            min="0"
-                            placeholder="Minutes"
-                            value="{{ (workout_form.total_duration_minutes if workout_form else '') or '' }}"
-                        >
-                    </div>
-                    <div class="field">
-                        <label for="perceived_intensity">Effort</label>
-                        <input
-                            type="number"
-                            id="perceived_intensity"
-                            name="perceived_intensity"
-                            min="1"
-                            max="10"
-                            placeholder="1-10"
-                            value="{{ (workout_form.perceived_intensity if workout_form else '') or '' }}"
-                        >
-                    </div>
-                </div>
-
-                <div class="field-row">
-                    <div class="field">
-                        <label for="recovery_rating">Recovery</label>
-                        <input
-                            type="number"
-                            id="recovery_rating"
-                            name="recovery_rating"
-                            min="1"
-                            max="5"
-                            placeholder="1-5"
-                            value="{{ workout_form.recovery_rating if workout_form and workout_form.recovery_rating is not none else '' }}"
-                        >
-                    </div>
-                    <div class="field">
-                        <label for="sleep_hours">Sleep</label>
-                        <input
-                            type="number"
-                            id="sleep_hours"
-                            name="sleep_hours"
-                            min="0"
-                            max="16"
-                            step="0.1"
-                            placeholder="Hours"
-                            value="{{ workout_form.sleep_hours if workout_form and workout_form.sleep_hours is not none else '' }}"
-                        >
-                    </div>
-                </div>
-
-                <div class="field-row">
-                    <div class="field">
-                        <label for="source">Source</label>
-                        <select id="source" name="source">
-                            {% set src = workout_form.source if workout_form else '' %}
-                            <option value="" {% if not src %}selected{% endif %}>Not specified</option>
-                            <option value="manual" {% if src == 'manual' %}selected{% endif %}>Manual</option>
-                            <option value="app" {% if src == 'app' %}selected{% endif %}>App</option>
-                            <option value="device" {% if src == 'device' %}selected{% endif %}>Device</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="field-row">
-                    <div class="field field-full">
-                        <label for="notes">Notes</label>
-                        <textarea
-                            id="notes"
-                            name="notes"
-                            rows="3"
-                            placeholder="PRs, recovery, focus."
-                        >{{ (workout_form.notes if workout_form else '') or '' }}</textarea>
-                    </div>
-                </div>
-
-                <div class="btn-row">
-                    <button type="submit" class="btn btn-primary">
-                        {{ 'Update Workout' if workout else 'Create Workout' }}
-                    </button>
-                    {% if workout %}
-                        <a href="{{ url_for('workouts.index') }}" class="btn btn-ghost">Cancel</a>
-                    {% endif %}
-                </div>
-            </form>
-        </section>
-    </aside>
+        </div>
+    </section>
 </div>
 {% endblock %}

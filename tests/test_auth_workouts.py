@@ -19,7 +19,7 @@ def test_demo_user_can_log_in_and_view_dashboard(client):
 
     dashboard = client.get("/")
     assert dashboard.status_code == 200
-    assert b"FitFuture Training Console" in dashboard.data
+    assert b"Log workouts and review your history" in dashboard.data
 
 
 def test_plan_page_separates_planning_workspace(client):
@@ -28,7 +28,7 @@ def test_plan_page_separates_planning_workspace(client):
     response = client.get("/plan")
 
     assert response.status_code == 200
-    assert b"FitFuture Plan Studio" in response.data
+    assert b"Set a clear weekly target" in response.data
     assert b"Current Training Block" in response.data
 
 
