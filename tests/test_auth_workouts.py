@@ -28,7 +28,7 @@ def test_plan_page_separates_planning_workspace(client):
     response = client.get("/plan")
 
     assert response.status_code == 200
-    assert b"Set a clear weekly target" in response.data
+    assert b"Set a clear workout target" in response.data
     assert b"Current Training Block" in response.data
 
 
@@ -88,7 +88,9 @@ def test_workout_creation_uses_logged_in_user_not_form_user_id(client):
 
     assert response.status_code == 302
 
-    workout = db.fetch_one("SELECT * FROM workout_sessions WHERE notes = ?", ("Ownership test",))
+    workout = db.fetch_one(
+        "SELECT * FROM workout_sessions WHERE notes = ?", ("Ownership test",)
+    )
     assert workout is not None
     assert workout["user_id"] == owner["user_id"]
     assert workout["recovery_rating"] == 4
@@ -114,13 +116,65 @@ def test_workout_validation_rejects_bad_input(client):
     assert response.status_code == 400
     assert b"Workout date is required." in response.data
     assert b"Duration must be between 1 and 600 minutes." in response.data
-    assert b"Effort must be between 1 and 10." in response.data
+    assert b"Intensity must be between 1 and 10." in response.data
     assert b"Recovery must be between 1 and 5." in response.data
     assert b"Sleep must be between 0 and 16 hours." in response.data
     assert b"Source must be manual, app, device, or blank." in response.data
 
-    workout = db.fetch_one("SELECT * FROM workout_sessions WHERE notes = ?", ("Invalid workout",))
+    workout = db.fetch_one(
+        "SELECT * FROM workout_sessions WHERE notes = ?", ("Invalid workout",)
+    )
     assert workout is None
+
+
+def test_sleep_page_logs_recovery_separately(client):
+    register(client, "sleep@example.com", "password123")
+    user = db.fetch_one("SELECT * FROM users WHERE email = ?", ("sleep@example.com",))
+
+    page = client.get("/sleep")
+    assert page.status_code == 200
+    assert b"Log sleep and recovery" in page.data
+
+    response = client.post(
+        "/sleep",
+        data={
+            "sleep_date": "2026-05-06",
+            "sleep_hours": "7.5",
+            "recovery_rating": "4",
+            "notes": "Slept well",
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    sleep_log = db.fetch_one(
+        "SELECT * FROM sleep_logs WHERE notes = ?", ("Slept well",)
+    )
+    assert sleep_log is not None
+    assert sleep_log["user_id"] == user["user_id"]
+    assert sleep_log["sleep_hours"] == 7.5
+    assert sleep_log["recovery_rating"] == 4
+
+
+def test_goal_update_calculates_total_from_workouts_and_duration(client):
+    register(client, "calculatedgoals@example.com", "password123")
+    user = db.fetch_one(
+        "SELECT * FROM users WHERE email = ?", ("calculatedgoals@example.com",)
+    )
+
+    response = client.post(
+        "/goals",
+        data={"workouts_per_week": "4", "workout_duration_minutes": "45"},
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 302
+    goals = db.fetch_one(
+        "SELECT * FROM user_goals WHERE user_id = ?",
+        (user["user_id"],),
+    )
+    assert goals["weekly_minutes_goal"] == 180
+    assert goals["weekly_sessions_goal"] == 4
 
 
 def test_profile_validation_rejects_bad_input(client):
@@ -164,8 +218,8 @@ def test_goal_validation_rejects_bad_targets(client):
     )
 
     assert response.status_code == 400
-    assert b"Weekly minutes goal must be between 30 and 600." in response.data
-    assert b"Weekly sessions goal must be between 1 and 14." in response.data
+    assert b"Total weekly minutes goal must be between 30 and 900." in response.data
+    assert b"Workouts per week goal must be between 1 and 14." in response.data
 
 
 def test_training_block_update_persists_current_phase(client):
@@ -179,9 +233,8 @@ def test_training_block_update_persists_current_phase(client):
             "training_focus": "hybrid",
             "start_date": "2026-05-04",
             "end_date": "2026-06-14",
-            "target_weekly_minutes": "240",
-            "target_weekly_sessions": "5",
-            "target_effort": "7",
+            "workouts_per_week": "5",
+            "workout_duration_minutes": "48",
             "notes": "Six-week base block",
         },
         follow_redirects=False,
@@ -196,7 +249,7 @@ def test_training_block_update_persists_current_phase(client):
     assert block["training_focus"] == "hybrid"
     assert block["target_weekly_minutes"] == 240
     assert block["target_weekly_sessions"] == 5
-    assert block["target_effort"] == 7
+    assert block["target_effort"] is None
 
     response = client.post(
         "/training-block",
@@ -243,8 +296,8 @@ def test_training_block_validation_rejects_bad_input(client):
     assert b"Block name is required." in response.data
     assert b"Training focus must be one of the available options." in response.data
     assert b"Block end date must be on or after the start date." in response.data
-    assert b"Block weekly minutes target must be between 30 and 900." in response.data
-    assert b"Block weekly session target must be between 1 and 14." in response.data
+    assert b"Total weekly minutes target must be between 30 and 900." in response.data
+    assert b"Workouts per week target must be between 1 and 14." in response.data
     assert b"Block target effort must be between 1 and 10." in response.data
 
 

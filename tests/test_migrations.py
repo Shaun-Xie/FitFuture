@@ -14,6 +14,7 @@ def test_init_db_records_schema_migration(client):
         {"version": 3, "name": "recovery_tracking"},
         {"version": 4, "name": "training_blocks"},
         {"version": 5, "name": "training_block_history"},
+        {"version": 6, "name": "sleep_logs"},
     ]
 
 
@@ -27,5 +28,5 @@ def test_init_db_is_idempotent(client):
         (config.DEMO_USER_EMAIL,),
     )
 
-    assert migration_count["c"] == 5
+    assert migration_count["c"] == 6
     assert demo_user_count["c"] == 1

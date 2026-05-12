@@ -37,8 +37,7 @@ def fetch_all(
 
 
 def migration_001_initial_schema(cursor: sqlite3.Cursor) -> None:
-    cursor.execute(
-        """
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS users (
             user_id INTEGER PRIMARY KEY AUTOINCREMENT,
             email TEXT NOT NULL UNIQUE,
@@ -46,11 +45,9 @@ def migration_001_initial_schema(cursor: sqlite3.Cursor) -> None:
             created_at TEXT NOT NULL,
             status TEXT NOT NULL DEFAULT 'ACTIVE'
         );
-        """
-    )
+        """)
 
-    cursor.execute(
-        """
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS user_profiles (
             user_id INTEGER PRIMARY KEY,
             age INTEGER,
@@ -61,11 +58,9 @@ def migration_001_initial_schema(cursor: sqlite3.Cursor) -> None:
             resting_heart_rate REAL,
             FOREIGN KEY (user_id) REFERENCES users(user_id)
         );
-        """
-    )
+        """)
 
-    cursor.execute(
-        """
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS workout_sessions (
             workout_id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
@@ -78,13 +73,11 @@ def migration_001_initial_schema(cursor: sqlite3.Cursor) -> None:
             notes TEXT,
             FOREIGN KEY (user_id) REFERENCES users(user_id)
         );
-        """
-    )
+        """)
 
 
 def migration_002_user_goals(cursor: sqlite3.Cursor) -> None:
-    cursor.execute(
-        """
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS user_goals (
             user_id INTEGER PRIMARY KEY,
             weekly_minutes_goal INTEGER NOT NULL DEFAULT 150,
@@ -92,8 +85,7 @@ def migration_002_user_goals(cursor: sqlite3.Cursor) -> None:
             updated_at TEXT NOT NULL,
             FOREIGN KEY (user_id) REFERENCES users(user_id)
         );
-        """
-    )
+        """)
 
 
 def add_column_if_missing(
@@ -103,7 +95,8 @@ def add_column_if_missing(
     column_sql: str,
 ) -> None:
     existing_columns = {
-        row["name"] for row in cursor.execute(f"PRAGMA table_info({table_name})").fetchall()
+        row["name"]
+        for row in cursor.execute(f"PRAGMA table_info({table_name})").fetchall()
     }
     if column_name not in existing_columns:
         cursor.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_sql}")
@@ -125,8 +118,7 @@ def migration_003_recovery_tracking(cursor: sqlite3.Cursor) -> None:
 
 
 def migration_004_training_blocks(cursor: sqlite3.Cursor) -> None:
-    cursor.execute(
-        """
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS user_training_blocks (
             user_id INTEGER PRIMARY KEY,
             block_name TEXT NOT NULL,
@@ -140,13 +132,11 @@ def migration_004_training_blocks(cursor: sqlite3.Cursor) -> None:
             updated_at TEXT NOT NULL,
             FOREIGN KEY (user_id) REFERENCES users(user_id)
         );
-        """
-    )
+        """)
 
 
 def migration_005_training_block_history(cursor: sqlite3.Cursor) -> None:
-    cursor.execute(
-        """
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS training_blocks (
             block_id INTEGER PRIMARY KEY AUTOINCREMENT,
             user_id INTEGER NOT NULL,
@@ -164,26 +154,23 @@ def migration_005_training_block_history(cursor: sqlite3.Cursor) -> None:
             archived_at TEXT,
             FOREIGN KEY (user_id) REFERENCES users(user_id)
         );
-        """
-    )
-    cursor.execute(
-        """
+        """)
+    cursor.execute("""
         CREATE INDEX IF NOT EXISTS idx_training_blocks_user_status
         ON training_blocks(user_id, status, updated_at);
-        """
-    )
+        """)
 
-    copied_count = cursor.execute("SELECT COUNT(*) AS c FROM training_blocks").fetchone()["c"]
+    copied_count = cursor.execute(
+        "SELECT COUNT(*) AS c FROM training_blocks"
+    ).fetchone()["c"]
     if copied_count:
         return
 
-    old_table_exists = cursor.execute(
-        """
+    old_table_exists = cursor.execute("""
         SELECT COUNT(*) AS c
         FROM sqlite_master
         WHERE type = 'table' AND name = 'user_training_blocks'
-        """
-    ).fetchone()["c"]
+        """).fetchone()["c"]
     if not old_table_exists:
         return
 
@@ -215,25 +202,44 @@ def migration_005_training_block_history(cursor: sqlite3.Cursor) -> None:
         )
 
 
+def migration_006_sleep_logs(cursor: sqlite3.Cursor) -> None:
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS sleep_logs (
+            sleep_id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            sleep_date TEXT NOT NULL,
+            sleep_hours REAL,
+            recovery_rating INTEGER,
+            notes TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            FOREIGN KEY (user_id) REFERENCES users(user_id)
+        );
+        """)
+    cursor.execute("""
+        CREATE INDEX IF NOT EXISTS idx_sleep_logs_user_date
+        ON sleep_logs(user_id, sleep_date DESC);
+        """)
+
+
 MIGRATIONS = (
     (1, "initial_schema", migration_001_initial_schema),
     (2, "user_goals", migration_002_user_goals),
     (3, "recovery_tracking", migration_003_recovery_tracking),
     (4, "training_blocks", migration_004_training_blocks),
     (5, "training_block_history", migration_005_training_block_history),
+    (6, "sleep_logs", migration_006_sleep_logs),
 )
 
 
 def ensure_migrations_table(cursor: sqlite3.Cursor) -> None:
-    cursor.execute(
-        """
+    cursor.execute("""
         CREATE TABLE IF NOT EXISTS schema_migrations (
             version INTEGER PRIMARY KEY,
             name TEXT NOT NULL,
             applied_at TEXT NOT NULL
         );
-        """
-    )
+        """)
 
 
 def run_migrations(cursor: sqlite3.Cursor) -> None:
@@ -290,7 +296,9 @@ def ensure_default_profile(
     cursor: sqlite3.Cursor,
     user_id: int = config.DEFAULT_USER_ID,
 ) -> None:
-    cursor.execute("SELECT COUNT(*) AS c FROM user_profiles WHERE user_id = ?", (user_id,))
+    cursor.execute(
+        "SELECT COUNT(*) AS c FROM user_profiles WHERE user_id = ?", (user_id,)
+    )
     if cursor.fetchone()["c"] == 0:
         cursor.execute(
             """

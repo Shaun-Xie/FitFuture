@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block content %}
+<section class="page-intro">
+    <div>
+        <p class="eyebrow">Sleep</p>
+        <h1>Log sleep and recovery.</h1>
+        <p class="hero-lede">Track sleep hours, recovery rating, and notes in a dedicated recovery space.</p>
+    </div>
+    <div class="intro-summary">
+        <strong>{{ sleep_metrics.log_count }}</strong>
+        <span>sleep logs</span>
+    </div>
+</section>
+
+<section class="metric-grid">
+    <article class="metric-tile">
+        <span class="metric-label">Logs</span>
+        <strong>{{ sleep_metrics.log_count }}</strong>
+        <span class="metric-note">total entries</span>
+    </article>
+    <article class="metric-tile">
+        <span class="metric-label">Sleep</span>
+        <strong>{{ sleep_metrics.avg_sleep_hours|round(1) if sleep_metrics.avg_sleep_hours is not none else '--' }}</strong>
+        <span class="metric-note">average hours</span>
+    </article>
+    <article class="metric-tile">
+        <span class="metric-label">Recovery</span>
+        <strong>{{ sleep_metrics.avg_recovery_rating|round(1) if sleep_metrics.avg_recovery_rating is not none else '--' }}</strong>
+        <span class="metric-note">average out of 5</span>
+    </article>
+    <article class="metric-tile">
+        <span class="metric-label">Latest</span>
+        <strong>{{ sleep_metrics.latest_date or '--' }}</strong>
+        <span class="metric-note">last sleep log</span>
+    </article>
+</section>
+
+<div class="workout-layout workout-layout-simple">
+    <section class="panel panel-accent">
+        <div class="panel-header compact">
+            <div>
+                <p class="section-kicker">{{ 'Edit' if sleep_log else 'Add' }}</p>
+                <h2>{{ 'Edit Sleep Log' if sleep_log else 'Log Sleep' }}</h2>
+            </div>
+        </div>
+
+        <form method="post" action="{{ form_action }}">
+            {% if sleep_errors %}
+                <div class="form-alert">
+                    {% for error in sleep_errors %}
+                        <div>{{ error }}</div>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            <div class="field-row">
+                <div class="field">
+                    <label for="sleep_date">Date</label>
+                    <input type="date" id="sleep_date" name="sleep_date" value="{{ (sleep_form.sleep_date if sleep_form else '') or '' }}" required>
+                </div>
+                <div class="field">
+                    <label for="sleep_hours">Sleep Hours</label>
+                    <input type="number" id="sleep_hours" name="sleep_hours" min="0" max="16" step="0.1" placeholder="Hours" value="{{ sleep_form.sleep_hours if sleep_form and sleep_form.sleep_hours is not none else '' }}" required>
+                </div>
+            </div>
+            <div class="field-row">
+                <div class="field">
+                    <label for="recovery_rating">Recovery</label>
+                    <input type="number" id="recovery_rating" name="recovery_rating" min="1" max="5" placeholder="1-5" value="{{ sleep_form.recovery_rating if sleep_form and sleep_form.recovery_rating is not none else '' }}">
+                </div>
+            </div>
+            <div class="field-row">
+                <div class="field field-full">
+                    <label for="notes">Notes</label>
+                    <textarea id="notes" name="notes" rows="3" placeholder="How rested do you feel? Anything affecting recovery?">{{ (sleep_form.notes if sleep_form else '') or '' }}</textarea>
+                </div>
+            </div>
+            <div class="btn-row">
+                <button type="submit" class="btn btn-primary">{{ 'Update Sleep' if sleep_log else 'Save Sleep' }}</button>
+                {% if sleep_log %}
+                    <a href="{{ url_for('workouts.sleep') }}" class="btn btn-ghost">Cancel</a>
+                {% endif %}
+            </div>
+        </form>
+    </section>
+
+    <section class="panel panel-wide">
+        <div class="panel-header">
+            <div>
+                <p class="section-kicker">History</p>
+                <h2>Sleep History</h2>
+            </div>
+            <span class="pill">{{ sleep_logs|length }} shown</span>
+        </div>
+
+        <div class="history-list">
+            {% for log in sleep_logs %}
+                <article class="history-item">
+                    <div class="history-main">
+                        <strong>{{ log.sleep_date }}</strong>
+                        <span>
+                            {{ log.sleep_hours|round(1) if log.sleep_hours is not none else '--' }}h sleep
+                            {% if log.recovery_rating is not none %} · {{ log.recovery_rating }}/5 recovery{% endif %}
+                        </span>
+                        {% if log.notes %}
+                            <p>{{ log.notes }}</p>
+                        {% endif %}
+                    </div>
+                    <div class="history-actions">
+                        {% if log.recovery_rating is not none %}
+                            <span class="badge-intensity badge-intensity-mid"><span></span>{{ log.recovery_rating }}/5</span>
+                        {% endif %}
+                        <a class="btn btn-ghost btn-compact" href="{{ url_for('workouts.edit_sleep_log', sleep_id=log.sleep_id) }}">Edit</a>
+                        <form method="post" action="{{ url_for('workouts.delete_sleep_log', sleep_id=log.sleep_id) }}" onsubmit="return confirm('Delete this sleep log?');">
+                            <button type="submit" class="btn btn-danger btn-compact">Delete</button>
+                        </form>
+                    </div>
+                </article>
+            {% endfor %}
+            {% if sleep_logs|length == 0 %}
+                <div class="empty-panel">
+                    <strong>No sleep logs found.</strong>
+                    <span>Log sleep and recovery to see your history.</span>
+                </div>
+            {% endif %}
+        </div>
+    </section>
+</div>
+{% endblock %}
