@@ -161,6 +161,25 @@ The test suite uses isolated temporary SQLite databases, so route and analytics 
 - Add richer workout calendar views and export/import workflows.
 - Deploy the app with production config and a public demo URL.
 
+## Deployment with GitHub Actions
+
+This repository includes a GitHub Actions workflow that publishes a read-only static demo of the current Flask site to GitHub Pages. The workflow runs on pushes to `work` or `main`, and it can also be started manually from the Actions tab with `workflow_dispatch`.
+
+Because GitHub Pages cannot run a Python/SQLite Flask server, the deployment uses `scripts/export_static.py` to render representative demo pages (`/`, `/sleep`, `/plan`, `/analytics`, `/login`, and `/register`) and copy the CSS into a static artifact. Interactive form submissions still require running the Flask app locally or on a Python web host.
+
+To enable the deployment in GitHub:
+
+1. Open the repository settings in GitHub.
+2. Go to **Pages**.
+3. Set **Build and deployment** to **GitHub Actions**.
+4. Push to `work` or `main`, or manually run **Deploy static site to GitHub Pages**.
+
+You can test the static export locally with:
+
+```bash
+python scripts/export_static.py --output dist --base-path /FitFuture/
+```
+
 ## Dataset citations
 
 This project uses publicly available datasets from Kaggle:
