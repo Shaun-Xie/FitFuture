@@ -67,8 +67,8 @@ def validate_workout_form(form: Any) -> tuple[dict[str, Any], list[str]]:
         errors.append("Intensity must be between 1 and 10.")
 
     recovery = values["recovery_rating"]
-    if recovery is not None and not 1 <= recovery <= 5:
-        errors.append("Recovery must be between 1 and 5.")
+    if recovery is not None and not 1 <= recovery <= 10:
+        errors.append("Recovery must be between 1 and 10.")
 
     sleep_hours = values["sleep_hours"]
     if sleep_hours is not None and not 0 <= sleep_hours <= 16:
@@ -104,8 +104,8 @@ def validate_sleep_form(form: Any) -> tuple[dict[str, Any], list[str]]:
         errors.append("Sleep must be between 0 and 16 hours.")
 
     recovery = values["recovery_rating"]
-    if recovery is not None and not 1 <= recovery <= 5:
-        errors.append("Recovery must be between 1 and 5.")
+    if recovery is not None and not 1 <= recovery <= 10:
+        errors.append("Recovery must be between 1 and 10.")
 
     if values["notes"] and len(values["notes"]) > 500:
         errors.append("Notes must stay under 500 characters.")

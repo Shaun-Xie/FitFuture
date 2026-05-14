@@ -239,7 +239,7 @@ def build_training_recommendations(
         )
 
     if avg_recovery_rating is not None and (
-        avg_recovery_rating <= 2.5 or strain_risk_sessions >= 2
+        avg_recovery_rating <= 5 or strain_risk_sessions >= 2
     ):
         recommendations.append(
             {
@@ -393,7 +393,7 @@ def build_training_insights(user_id: int = config.DEFAULT_USER_ID) -> dict[str, 
         else:
             intensity_zones["Peak"] += 1
 
-        if recovery_rating is not None and intensity >= 8 and recovery_rating <= 2:
+        if recovery_rating is not None and intensity >= 8 and recovery_rating <= 4:
             strain_risk_sessions += 1
 
     weeks = list(weekly_buckets.values())
