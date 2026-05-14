@@ -127,6 +127,32 @@ def test_workout_validation_rejects_bad_input(client):
     assert workout is None
 
 
+def test_workout_validation_rejects_decimal_recovery(client):
+    register(client, "workout-decimal@example.com", "password123")
+
+    response = client.post(
+        "/workouts",
+        data={
+            "workout_date": "2026-05-06",
+            "total_duration_minutes": "45",
+            "perceived_intensity": "7",
+            "recovery_rating": "7.5",
+            "sleep_hours": "7.5",
+            "source": "manual",
+            "notes": "Decimal workout recovery",
+        },
+    )
+
+    assert response.status_code == 400
+    assert b"Recovery must be a whole number." in response.data
+
+    workout = db.fetch_one(
+        "SELECT * FROM workout_sessions WHERE notes = ?",
+        ("Decimal workout recovery",),
+    )
+    assert workout is None
+
+
 def test_sleep_page_logs_recovery_separately(client):
     register(client, "sleep@example.com", "password123")
     user = db.fetch_one("SELECT * FROM users WHERE email = ?", ("sleep@example.com",))
@@ -154,6 +180,28 @@ def test_sleep_page_logs_recovery_separately(client):
     assert sleep_log["user_id"] == user["user_id"]
     assert sleep_log["sleep_hours"] == 7.5
     assert sleep_log["recovery_rating"] == 4
+
+
+def test_sleep_validation_rejects_decimal_recovery(client):
+    register(client, "sleep-decimal@example.com", "password123")
+
+    response = client.post(
+        "/sleep",
+        data={
+            "sleep_date": "2026-05-06",
+            "sleep_hours": "7.5",
+            "recovery_rating": "7.5",
+            "notes": "Decimal recovery",
+        },
+    )
+
+    assert response.status_code == 400
+    assert b"Recovery must be a whole number." in response.data
+
+    sleep_log = db.fetch_one(
+        "SELECT * FROM sleep_logs WHERE notes = ?", ("Decimal recovery",)
+    )
+    assert sleep_log is None
 
 
 def test_goal_update_calculates_total_from_workouts_and_duration(client):

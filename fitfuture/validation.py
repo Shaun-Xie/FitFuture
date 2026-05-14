@@ -11,6 +11,11 @@ ALLOWED_SOURCES = {"", "manual", "app", "device"}
 ALLOWED_GENDERS = {"", "M", "F"}
 
 
+def has_submitted_value(form: Any, key: str) -> bool:
+    value = form.get(key)
+    return value is not None and str(value).strip() != ""
+
+
 def is_valid_date(value: str) -> bool:
     try:
         datetime.fromisoformat(value).date()
@@ -67,7 +72,9 @@ def validate_workout_form(form: Any) -> tuple[dict[str, Any], list[str]]:
         errors.append("Intensity must be between 1 and 10.")
 
     recovery = values["recovery_rating"]
-    if recovery is not None and not 1 <= recovery <= 10:
+    if recovery is None and has_submitted_value(form, "recovery_rating"):
+        errors.append("Recovery must be a whole number.")
+    elif recovery is not None and not 1 <= recovery <= 10:
         errors.append("Recovery must be between 1 and 10.")
 
     sleep_hours = values["sleep_hours"]
@@ -104,7 +111,9 @@ def validate_sleep_form(form: Any) -> tuple[dict[str, Any], list[str]]:
         errors.append("Sleep must be between 0 and 16 hours.")
 
     recovery = values["recovery_rating"]
-    if recovery is not None and not 1 <= recovery <= 10:
+    if recovery is None and has_submitted_value(form, "recovery_rating"):
+        errors.append("Recovery must be a whole number.")
+    elif recovery is not None and not 1 <= recovery <= 10:
         errors.append("Recovery must be between 1 and 10.")
 
     if values["notes"] and len(values["notes"]) > 500:
