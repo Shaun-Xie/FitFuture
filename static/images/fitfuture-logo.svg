@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-labelledby="title desc">
+  <title id="title">FitFuture logo</title>
+  <desc id="desc">A sleek emerald and aqua monogram mark combining movement and forward progress.</desc>
+  <defs>
+    <linearGradient id="badge" x1="14" y1="10" x2="84" y2="88" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#38d39f"/>
+      <stop offset="0.54" stop-color="#45c7e8"/>
+      <stop offset="1" stop-color="#7c5cff"/>
+    </linearGradient>
+    <linearGradient id="cut" x1="24" y1="25" x2="72" y2="72" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#f8fffd"/>
+      <stop offset="1" stop-color="#dff8ff"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#38d39f" flood-opacity="0.28"/>
+    </filter>
+  </defs>
+  <rect width="96" height="96" rx="26" fill="#07111d"/>
+  <path d="M48 9c21.54 0 39 17.46 39 39S69.54 87 48 87 9 69.54 9 48 26.46 9 48 9Z" fill="url(#badge)" filter="url(#glow)"/>
+  <path d="M29 26h39.5c2.49 0 4.5 2.01 4.5 4.5S70.99 35 68.5 35H39v11h23.5c2.49 0 4.5 2.01 4.5 4.5S64.99 55 62.5 55H39v17H29V26Z" fill="url(#cut)"/>
+  <path d="M46 62.2 66.3 42H52.6c-2.43 0-4.4-1.97-4.4-4.4s1.97-4.4 4.4-4.4H77V57.6c0 2.43-1.97 4.4-4.4 4.4s-4.4-1.97-4.4-4.4V48L52.4 63.8c-1.77 1.77-4.63 1.77-6.4 0-.44-.44-.44-1.16 0-1.6Z" fill="#07111d" opacity="0.9"/>
+  <path d="M27 74h35c2.21 0 4 1.79 4 4s-1.79 4-4 4H27c-2.21 0-4-1.79-4-4s1.79-4 4-4Z" fill="#07111d" opacity="0.16"/>
+</svg>

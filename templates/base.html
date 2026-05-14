@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <title>FitFuture Tracker</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='images/fitfuture-logo.svg') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
     {% block head_extras %}{% endblock %}
 </head>
@@ -12,8 +13,8 @@
     <header class="topbar">
         <div class="header-inner">
             <div class="brand">
-                <div class="brand-logo">
-                    <div class="brand-logo-inner">FF</div>
+                <div class="brand-logo" aria-hidden="true">
+                    <img src="{{ url_for('static', filename='images/fitfuture-logo.svg') }}" alt="" class="brand-logo-img">
                 </div>
                 <div class="brand-text">
                     <div class="brand-title">FitFuture</div>

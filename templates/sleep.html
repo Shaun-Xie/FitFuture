@@ -27,7 +27,7 @@
     <article class="metric-tile">
         <span class="metric-label">Recovery</span>
         <strong>{{ sleep_metrics.avg_recovery_rating|round(1) if sleep_metrics.avg_recovery_rating is not none else '--' }}</strong>
-        <span class="metric-note">average out of 5</span>
+        <span class="metric-note">average out of 10</span>
     </article>
     <article class="metric-tile">
         <span class="metric-label">Latest</span>
@@ -66,7 +66,7 @@
             <div class="field-row">
                 <div class="field">
                     <label for="recovery_rating">Recovery</label>
-                    <input type="number" id="recovery_rating" name="recovery_rating" min="1" max="5" placeholder="1-5" value="{{ sleep_form.recovery_rating if sleep_form and sleep_form.recovery_rating is not none else '' }}">
+                    <input type="number" id="recovery_rating" name="recovery_rating" min="1" max="10" placeholder="1-10" value="{{ sleep_form.recovery_rating if sleep_form and sleep_form.recovery_rating is not none else '' }}">
                 </div>
             </div>
             <div class="field-row">
@@ -100,7 +100,7 @@
                         <strong>{{ log.sleep_date }}</strong>
                         <span>
                             {{ log.sleep_hours|round(1) if log.sleep_hours is not none else '--' }}h sleep
-                            {% if log.recovery_rating is not none %} · {{ log.recovery_rating }}/5 recovery{% endif %}
+                            {% if log.recovery_rating is not none %} · {{ log.recovery_rating }}/10 recovery{% endif %}
                         </span>
                         {% if log.notes %}
                             <p>{{ log.notes }}</p>
@@ -108,7 +108,7 @@
                     </div>
                     <div class="history-actions">
                         {% if log.recovery_rating is not none %}
-                            <span class="badge-intensity badge-intensity-mid"><span></span>{{ log.recovery_rating }}/5</span>
+                            <span class="badge-intensity badge-intensity-mid"><span></span>{{ log.recovery_rating }}/10</span>
                         {% endif %}
                         <a class="btn btn-ghost btn-compact" href="{{ url_for('workouts.edit_sleep_log', sleep_id=log.sleep_id) }}">Edit</a>
                         <form method="post" action="{{ url_for('workouts.delete_sleep_log', sleep_id=log.sleep_id) }}" onsubmit="return confirm('Delete this sleep log?');">

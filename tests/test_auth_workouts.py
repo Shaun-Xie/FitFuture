@@ -140,7 +140,7 @@ def test_sleep_page_logs_recovery_separately(client):
         data={
             "sleep_date": "2026-05-06",
             "sleep_hours": "7.5",
-            "recovery_rating": "4",
+            "recovery_rating": "10",
             "notes": "Slept well",
         },
         follow_redirects=False,
@@ -153,7 +153,7 @@ def test_sleep_page_logs_recovery_separately(client):
     assert sleep_log is not None
     assert sleep_log["user_id"] == user["user_id"]
     assert sleep_log["sleep_hours"] == 7.5
-    assert sleep_log["recovery_rating"] == 4
+    assert sleep_log["recovery_rating"] == 10
 
 
 def test_goal_update_calculates_total_from_workouts_and_duration(client):

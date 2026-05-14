@@ -44,8 +44,8 @@ h2 { margin-bottom: 0; font-size: 1.1rem; }
 .header-inner { min-height: 68px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .brand, .topbar-actions, .nav-tabs, .status-pill, .pill, .btn, .actions-cell, .hero-meta { display: flex; align-items: center; }
 .brand { gap: 12px; min-width: 0; }
-.brand-logo { width: 38px; height: 38px; border-radius: var(--radius); background: var(--accent); color: #06110d; display: grid; place-items: center; flex: 0 0 auto; }
-.brand-logo-inner { font-size: 0.86rem; font-weight: 850; }
+.brand-logo { width: 42px; height: 42px; border-radius: 14px; display: grid; place-items: center; flex: 0 0 auto; filter: drop-shadow(0 10px 18px rgba(56, 211, 159, 0.24)); }
+.brand-logo-img { width: 42px; height: 42px; display: block; }
 .brand-title { font-weight: 850; }
 .brand-subtitle, .metric-note, .date-stack span, .section-kicker, .hero-lede, .empty-panel span, .dataset-item span, .insight-card p, .field label, .muted, .history-main span, .history-main p { color: var(--text-muted); }
 .brand-subtitle { margin-top: 2px; font-size: 0.8rem; }
