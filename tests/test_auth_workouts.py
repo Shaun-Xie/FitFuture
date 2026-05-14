@@ -106,7 +106,7 @@ def test_workout_validation_rejects_bad_input(client):
             "workout_date": "",
             "total_duration_minutes": "0",
             "perceived_intensity": "11",
-            "recovery_rating": "6",
+            "recovery_rating": "11",
             "sleep_hours": "18",
             "source": "spreadsheet",
             "notes": "Invalid workout",
@@ -117,7 +117,7 @@ def test_workout_validation_rejects_bad_input(client):
     assert b"Workout date is required." in response.data
     assert b"Duration must be between 1 and 600 minutes." in response.data
     assert b"Intensity must be between 1 and 10." in response.data
-    assert b"Recovery must be between 1 and 5." in response.data
+    assert b"Recovery must be between 1 and 10." in response.data
     assert b"Sleep must be between 0 and 16 hours." in response.data
     assert b"Source must be manual, app, device, or blank." in response.data
 
